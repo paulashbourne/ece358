@@ -1,10 +1,10 @@
 package com.ece358;
 
-public class PeerInfo {
+public class Peer {
   private String address;
   private Integer port;
 
-  public PeerInfo(String address, Integer port) {
+  public Peer(String address, Integer port) {
     this.address = address;
     this.port = port;
   }

@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Random;
 
 public class AddPeer {
-  private List<PeerInfo> peerInfo;
+  private List<Peer> peers;
 
   public static void main(String[] args) throws IOException {
     AddPeer program = new AddPeer();
@@ -23,7 +23,7 @@ public class AddPeer {
   }
 
   public AddPeer() {
-    peerInfo = new ArrayList<>();
+    peers = new ArrayList<>();
   }
 
   private void start(String[] args) {
@@ -38,14 +38,14 @@ public class AddPeer {
       }
     }
 
-    String address;
-    int port;
+    String address = null;
+    Integer port = null;
     try {
       address = InetAddress.getLocalHost().getHostAddress();
       port = serverSocket.getLocalPort();
       System.out.println(String.format("%s %d", address, port));
     } catch (UnknownHostException e) {
-      e.printStackTrace();
+      System.exit(1);
     }
 
     if (args.length > 0) {
@@ -53,10 +53,20 @@ public class AddPeer {
       try {
         socket = new Socket(args[0], Integer.valueOf(args[1]));
         OutputStream socketOutputStream = socket.getOutputStream();
-        socketOutputStream.write(
-            String.format("ADDPEER %s %s\r\n\r\n", args[0], args[1]).getBytes());
+        InputStream socketInputStream = socket.getInputStream();
+        socketOutputStream.write(new Request(address, port).toWire());
+        AddPeer.Response response =
+            AddPeer.Response.Parser.fromWire(readMessageFromInputStream(socketInputStream));
         socketOutputStream.close();
-        peerInfo.add(new PeerInfo(args[0], Integer.valueOf(args[1])));
+
+        for (Peer peer : response.peers) {
+          System.out.println(String.format("Trying to connect to %s:%s", peer.getAddress(), peer.getPort()));
+          socket = new Socket(peer.getAddress(), peer.getPort());
+          socketOutputStream = socket.getOutputStream();
+          socketOutputStream.write(new Request(address, port).toWire());
+        }
+
+        peers.add(new Peer(args[0], Integer.valueOf(args[1])));
       } catch (IOException e) {
         System.exit(1);
       }
@@ -70,8 +80,7 @@ public class AddPeer {
     }
   }
 
-  private void handleSocket(Socket socket) throws IOException {
-    InputStream inputStream = socket.getInputStream();
+  private String readMessageFromInputStream(InputStream inputStream) throws IOException {
     byte readData[] = new byte[100];
     int bytesRead;
     ByteArrayOutputStream data = new ByteArrayOutputStream();
@@ -80,30 +89,105 @@ public class AddPeer {
         data.write(Arrays.copyOfRange(readData, 0, bytesRead));
         String message = data.toString(StandardCharsets.US_ASCII.name());
         if (message.endsWith("\r\n\r\n")) {
-          handleMessage(message.trim(), socket);
-          break;
+          return message;
         }
       }
     }
   }
 
+  private void handleSocket(Socket socket) throws IOException {
+    String message = readMessageFromInputStream(socket.getInputStream());
+    handleMessage(message, socket);
+  }
+
   private void handleMessage(String message, Socket socket) throws IOException {
-    System.out.println(message);
     if (message.startsWith("ADDPEER")) {
-      String[] command = message.split(" ");
-      if (command.length != 3) {
-        socket.getOutputStream().write("FAILURE".getBytes());
-      } else {
-        PeerInfo newPeerInfo = new PeerInfo(command[1], Integer.valueOf(command[2]));
-        peerInfo.add(newPeerInfo);
-        System.out.println(
-            String.format("Added peer [address=%s, port=%d]", newPeerInfo.getAddress(),
-                newPeerInfo.getPort()));
-        socket.getOutputStream().write("SUCCESS".getBytes());
-      }
+      Request request = Request.Parser.fromWire(message);
+      Peer newPeer = new Peer(request.address, request.port);
+      byte[] response = new Response(true, peers).toWire();
+      peers.add(newPeer);
+      System.out.println(
+          String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
+              newPeer.getPort()));
+      socket.getOutputStream().write(response);
     } else {
-      socket.getOutputStream().write("FAILURE".getBytes());
+      socket.getOutputStream().write("FAILURE".getBytes(StandardCharsets.US_ASCII));
     }
     socket.close();
+  }
+
+  public static class Request {
+    public final String address;
+    public final Integer port;
+
+    public Request(String address, Integer port) {
+      this.address = address;
+      this.port = port;
+    }
+
+    byte[] toWire() {
+      return String.format("ADDPEER %s:%s\r\n\r\n", address, port).getBytes(StandardCharsets.US_ASCII);
+    }
+
+    public static class Parser {
+      public static Request fromWire(String s) {
+        s = s.trim().split(" ")[1];
+        String address = s.split(":")[0];
+        String port = s.split(":")[1];
+        return new Request(address, Integer.valueOf(port));
+      }
+    }
+  }
+
+  public static class Response {
+    private final boolean success;
+    private List<Peer> peers;
+
+    public Response(boolean success, List<Peer> peers) {
+      this.success = success;
+      this.peers = peers;
+    }
+
+    @Override public String toString() {
+      return String.format("Response [success=%s]", success);
+    }
+
+    byte[] toWire() {
+      if (!success) {
+        return "FAILURE\r\n\r\n".getBytes();
+      }
+      StringBuilder sb = new StringBuilder()
+          .append("SUCCESS");
+
+      if (peers != null && peers.size() > 0) {
+        sb.append("\n");
+      }
+
+      for (Peer peer : peers) {
+        sb.append(String.format("%s:%s\n", peer.getAddress(), peer.getPort()));
+      }
+      return sb.append("\r\n\r\n").toString().getBytes(StandardCharsets.US_ASCII);
+    }
+
+    public static class Parser {
+      public static Response fromWire(String s) {
+        if (s.startsWith("FAILURE")) {
+          return new Response(false, null);
+        } else if (s.equals("SUCCESS\r\n\r\n")) {
+          return new Response(true, new ArrayList<>());
+        }
+
+        s = s.trim();
+        s = s.substring(s.indexOf("\n") + 1, s.length());
+        List<Peer> peers = new ArrayList<>();
+        for (String l : s.split("\n")) {
+          String address = l.split(":")[0];
+          String port = l.split(":")[1];
+          peers.add(new Peer(address, Integer.valueOf(port)));
+        }
+
+        return new Response(true, peers);
+      }
+    }
   }
 }

@@ -47,7 +47,6 @@ public class PeerProcess {
     }
 
     if (args.length > 0) {
-      Socket socket;
       try {
         Request request = new AddPeerRequest(address, port);
         AddPeerResponse response =
@@ -102,6 +101,8 @@ public class PeerProcess {
           String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
               newPeer.getPort()));
       return response;
+    } else if (untypedRequest instanceof AllKeysRequest) {
+      return new AllKeysResponse(true, localContentMappings.keySet());
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();

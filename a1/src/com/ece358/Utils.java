@@ -3,6 +3,8 @@ package com.ece358;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -10,7 +12,7 @@ import java.util.Arrays;
  * Created by jeff on 2017-06-03.
  */
 public class Utils {
-  public static Request readRequestFromInputStream(InputStream inputStream) throws IOException {
+  static Request readRequestFromInputStream(InputStream inputStream) throws IOException {
     byte readData[] = new byte[100];
     int bytesRead;
     ByteArrayOutputStream data = new ByteArrayOutputStream();
@@ -26,7 +28,7 @@ public class Utils {
     }
   }
 
-  public static Response readResponseFromInputStream(InputStream inputStream) throws IOException {
+  private static Response readResponseFromInputStream(InputStream inputStream) throws IOException {
     byte readData[] = new byte[100];
     int bytesRead;
     ByteArrayOutputStream data = new ByteArrayOutputStream();
@@ -40,5 +42,16 @@ public class Utils {
         }
       }
     }
+  }
+
+  public static Response sendAndGetResponse(String ipAddress, Integer port, Request request)
+      throws IOException {
+    Socket socket = new Socket(ipAddress, port);
+    OutputStream socketOutputStream = socket.getOutputStream();
+    InputStream socketInputStream = socket.getInputStream();
+    socketOutputStream.write(request.toBytes());
+    Response response = Utils.readResponseFromInputStream(socketInputStream);
+    socketOutputStream.close();
+    return response;
   }
 }

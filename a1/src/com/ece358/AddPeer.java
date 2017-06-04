@@ -51,26 +51,21 @@ public class AddPeer {
     if (args.length > 0) {
       Socket socket;
       try {
-        socket = new Socket(args[0], Integer.valueOf(args[1]));
-        OutputStream socketOutputStream = socket.getOutputStream();
-        InputStream socketInputStream = socket.getInputStream();
-        socketOutputStream.write(new AddPeerRequest(address, port).toBytes());
+        Request request = new AddPeerRequest(address, port);
         AddPeerResponse response =
-            (AddPeerResponse) Utils.readResponseFromInputStream(socketInputStream);
+            (AddPeerResponse) Utils.sendAndGetResponse(args[0], Integer.valueOf(args[1]), request);
         System.out.println(
             String.format("Added peer [address=%s, port=%s]", args[0], args[1]));
-        socketOutputStream.close();
 
         for (Peer peer : response.peers) {
           if (peer.getAddress().equals(address) && peer.getPort().equals(port)) {
             continue;
           }
 
-          socket = new Socket(peer.getAddress(), peer.getPort());
-          socketOutputStream = socket.getOutputStream();
-          socketOutputStream.write(new AddPeerRequest(address, port).toBytes());
-          AddPeerResponse addPeerResponse = (AddPeerResponse) getResponse(socket);
-          if (addPeerResponse.success) {
+          request = new AddPeerRequest(address, port);
+          response = (AddPeerResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(),
+              request);
+          if (response.success) {
             System.out.println(
                 String.format("Added peer [address=%s, port=%d]", peer.getAddress(),
                     peer.getPort()));
@@ -90,11 +85,6 @@ public class AddPeer {
       } catch (IOException e) {
       }
     }
-  }
-
-  private Response getResponse(Socket socket) throws IOException {
-    Response response = Utils.readResponseFromInputStream(socket.getInputStream());
-    return response;
   }
 
   private void handleSocket(Socket socket) throws IOException {

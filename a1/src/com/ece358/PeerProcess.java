@@ -89,6 +89,10 @@ public class PeerProcess {
     Response response = handleRequest(request);
     socket.getOutputStream().write(response.toBytes());
     socket.close();
+    if (response instanceof RemovePeerResponse) {
+      // Kill peer process
+      System.exit(0);
+    }
   }
 
   public Response handleRequest(Request untypedRequest) throws IOException {
@@ -103,6 +107,9 @@ public class PeerProcess {
       return response;
     } else if (untypedRequest instanceof AllKeysRequest) {
       return new AllKeysResponse(true, localContentMappings.keySet());
+    } else if (untypedRequest instanceof RemovePeerRequest) {
+      rebalance();
+      return new RemovePeerResponse(true);
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();
@@ -110,6 +117,15 @@ public class PeerProcess {
   }
 
   private void rebalance() {
-
+    /*
+     * addPeer:
+     *  - Grab content from other peers
+     * removePeer:
+     *  - Push content to other peers
+     * addContent:
+     *  - Push to a single peer
+     * removeContenxt:
+     *  - Grab content from another peer
+     */
   }
 }

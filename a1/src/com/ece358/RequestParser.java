@@ -12,12 +12,14 @@ public class RequestParser {
   public static Request fromString(String s) {
     if (s.startsWith("ADDPEER")) {
       return addPeerRequestFromString(s);
+    } else if (s.startsWith("ALLKEYS")) {
+      return new AllKeysRequest();
     }
 
     return null;
   }
 
-  public static AddPeerRequest addPeerRequestFromString(String s) {
+  private static AddPeerRequest addPeerRequestFromString(String s) {
     String[] splitRequest = s.split("\n");
     if (splitRequest.length != 4) {
       return null;

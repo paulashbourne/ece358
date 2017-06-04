@@ -2,9 +2,12 @@ package com.ece358;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -24,7 +27,7 @@ public class PeerProcess {
     globalContentCounter = 0;
   }
 
-  public void start(String[] args) {
+  public void start(String[] args) throws SocketException {
     ServerSocket serverSocket;
     // TODO(jgulbronson) - add limit to retries
     while (true) {
@@ -38,13 +41,24 @@ public class PeerProcess {
 
     String address = null;
     Integer port = null;
-    try {
-      address = InetAddress.getLocalHost().getHostAddress();
-      port = serverSocket.getLocalPort();
-      System.out.println(String.format("%s %d", address, port));
-    } catch (UnknownHostException e) {
-      System.exit(1);
+    Enumeration interfaces = NetworkInterface.getNetworkInterfaces();
+    while (interfaces.hasMoreElements()) {
+      NetworkInterface networkInterface = (NetworkInterface) interfaces.nextElement();
+      if (networkInterface.isLoopback()) {
+        continue;
+      }
+      Enumeration<InetAddress> inetAddresses = networkInterface.getInetAddresses();
+      while (inetAddresses.hasMoreElements()) {
+        InetAddress inetAddress = inetAddresses.nextElement();
+        if (inetAddress.isLoopbackAddress()) {
+          continue;
+        }
+
+        address = inetAddress.getHostAddress();
+      }
     }
+    port = serverSocket.getLocalPort();
+    System.out.println(String.format("%s %d", address, port));
 
     if (args.length > 0) {
       try {

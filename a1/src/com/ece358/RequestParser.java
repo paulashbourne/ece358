@@ -12,14 +12,18 @@ public class RequestParser {
   public static Request fromString(String s) {
     if (s.startsWith("ADDPEER")) {
       return addPeerRequestFromString(s);
+    } else if (s.startsWith("ADDCONTENT")) {
+      return addContentRequestFromString(s);
     } else if (s.startsWith("ALLKEYS")) {
       return new AllKeysRequest();
+    } else if (s.startsWith("UPDATECOUNTER")) {
+      return updateCounterRequestFromString(s);
     }
 
     return null;
   }
 
-  private static AddPeerRequest addPeerRequestFromString(String s) {
+  public static String[] verifyRequest(String s) {
     String[] splitRequest = s.split("\n");
     if (splitRequest.length != 4) {
       return null;
@@ -30,10 +34,36 @@ public class RequestParser {
     }
     Integer contentLength = Integer.valueOf(matcher.group(1));
     if (contentLength == splitRequest[3].length()) {
-      String[] splitContent = splitRequest[3].trim().split(":");
-      return new AddPeerRequest(splitContent[0], Integer.valueOf(splitContent[1]));
+      return splitRequest[3].trim().split(":");
     } else {
       return null;
     }
+  }
+
+  public static AddPeerRequest addPeerRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null || splitContent.length < 2) {
+      return null;
+    }
+
+    return new AddPeerRequest(splitContent[0], Integer.valueOf(splitContent[1]));
+  }
+
+  public static AddContentRequest addContentRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null || splitContent.length < 3) {
+      return null;
+    }
+
+    return new AddContentRequest(splitContent[0], Integer.valueOf(splitContent[1]), splitContent[2]);
+  }
+
+  public static UpdateCounterRequest updateCounterRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null || splitContent.length < 2) {
+      return null;
+    }
+
+    return new UpdateCounterRequest(splitContent[0], Integer.valueOf(splitContent[1]), Integer.valueOf(splitContent[2]));
   }
 }

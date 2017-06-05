@@ -6,22 +6,20 @@ import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Random;
+import java.util.*;
 
 public class PeerProcess {
-  private List<Peer> peers;
+  private Set<Peer> peers;
   private HashMap<Integer, String> localContentMappings;
   private HashMap<Integer, Peer> peerContentMappings;
   private Integer globalContentCounter;
 
   public PeerProcess() {
-    peers = new LinkedList<>();
+    peers = new HashSet<>();
     localContentMappings = new LinkedHashMap<>();
     peerContentMappings = new LinkedHashMap<>();
     globalContentCounter = 0;
@@ -81,6 +79,8 @@ public class PeerProcess {
                 String.format("Added peer [address=%s, port=%d]", peer.getAddress(),
                     peer.getPort()));
           }
+
+          peers.add(peer);
         }
 
         peers.add(new Peer(args[0], Integer.valueOf(args[1])));
@@ -119,6 +119,22 @@ public class PeerProcess {
           String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
               newPeer.getPort()));
       return response;
+    } else if (untypedRequest instanceof AddContentRequest) {
+      AddContentRequest request = (AddContentRequest) untypedRequest;
+      String content = request.content;
+      Peer me = new Peer(request.address, request.port);
+      localContentMappings.put(globalContentCounter, content);
+      peerContentMappings.put(globalContentCounter, me);
+
+      AddContentResponse response = new AddContentResponse(true, globalContentCounter);
+
+      globalContentCounter++;
+
+      peers.forEach(this::notifyCounterChange);
+
+      rebalance();
+
+      return response;
     } else if (untypedRequest instanceof AllKeysRequest) {
       return new AllKeysResponse(true, localContentMappings.keySet());
     } else if (untypedRequest instanceof RemovePeerRequest) {
@@ -127,6 +143,15 @@ public class PeerProcess {
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();
+    }
+  }
+
+  private void notifyCounterChange(Peer peer) {
+    UpdateCounterRequest request = new UpdateCounterRequest(peer.getAddress(), peer.getPort(), globalContentCounter);
+    try {
+      Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
+    } catch (IOException e) {
+      System.err.println("Error: no such peer");
     }
   }
 

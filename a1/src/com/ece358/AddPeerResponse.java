@@ -2,15 +2,16 @@ package com.ece358;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by jeff on 2017-06-03.
  */
 public class AddPeerResponse extends Response {
   public final boolean success;
-  public List<Peer> peers;
+  public Set<Peer> peers;
 
-  public AddPeerResponse(boolean success, List<Peer> peers) {
+  public AddPeerResponse(boolean success, Set<Peer> peers) {
     this.success = success;
     this.peers = peers;
   }

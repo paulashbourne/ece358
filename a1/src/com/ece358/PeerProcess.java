@@ -64,6 +64,7 @@ public class PeerProcess {
         AddPeerResponse response =
             (AddPeerResponse) Utils.sendAndGetResponse(args[0], Integer.valueOf(args[1]), request);
         globalContentCounter = response.counter;
+        peerContentMappings = (HashMap<Integer, Peer>) response.peerContentMapping;
         System.out.println(
             String.format("Added peer [address=%s, port=%s]", args[0], args[1]));
 
@@ -73,12 +74,10 @@ public class PeerProcess {
           }
 
           request = new AddPeerRequest(address, port);
-          response = (AddPeerResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(),
-              request);
+          response = (AddPeerResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
           if (response.success) {
             System.out.println(
-                String.format("Added peer [address=%s, port=%d]", peer.getAddress(),
-                    peer.getPort()));
+                String.format("Added peer [address=%s, port=%d]", peer.getAddress(), peer.getPort()));
           }
 
           peers.add(peer);
@@ -114,7 +113,7 @@ public class PeerProcess {
     if (untypedRequest instanceof AddPeerRequest) {
       AddPeerRequest request = (AddPeerRequest) untypedRequest;
       Peer newPeer = new Peer(request.address, request.port);
-      Response response = new AddPeerResponse(true, peers, globalContentCounter);
+      Response response = new AddPeerResponse(true, peers, globalContentCounter, peerContentMappings);
       peers.add(newPeer);
       System.out.println(
           String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
@@ -128,6 +127,8 @@ public class PeerProcess {
       peerContentMappings.put(globalContentCounter, me);
 
       AddContentResponse response = new AddContentResponse(true, globalContentCounter);
+
+      peers.forEach(this::updateContentMapping);
 
       globalContentCounter++;
 
@@ -145,6 +146,17 @@ public class PeerProcess {
       UpdateCounterRequest request = (UpdateCounterRequest) untypedRequest;
       globalContentCounter = request.counter;
       return new UpdateCounterResponse(true);
+    } else if (untypedRequest instanceof UpdateContentMappingRequest) {
+      UpdateContentMappingRequest request = (UpdateContentMappingRequest) untypedRequest;
+      if (request.add) {
+        peerContentMappings.put(request.key, new Peer(request.address, request.port));
+      } else if (peerContentMappings.containsKey(request.key)) {
+        peerContentMappings.remove(request.key);
+      } else {
+        return new UpdateContentMappingResponse(false);
+      }
+
+      return new UpdateContentMappingResponse(true);
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();
@@ -153,6 +165,16 @@ public class PeerProcess {
 
   private void notifyCounterChange(Peer peer) {
     UpdateCounterRequest request = new UpdateCounterRequest(peer.getAddress(), peer.getPort(), globalContentCounter);
+    try {
+      Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
+    } catch (IOException e) {
+      System.err.println("Error: no such peer");
+    }
+  }
+
+  private void updateContentMapping(Peer peer) {
+    UpdateContentMappingRequest request =
+        new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), globalContentCounter, true);
     try {
       Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
     } catch (IOException e) {

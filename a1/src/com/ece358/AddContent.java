@@ -10,8 +10,7 @@ public class AddContent {
 
     AddContentRequest request = new AddContentRequest(ipAddress, port, content);
     try {
-      AddContentResponse response =
-          (AddContentResponse) Utils.sendAndGetResponse(ipAddress, port, request);
+      Utils.sendAndGetResponse(ipAddress, port, request);
     } catch (IOException e) {
       System.err.println("Error: no such peer");
     }

@@ -2,6 +2,7 @@ package com.ece358;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -11,11 +12,13 @@ public class AddPeerResponse extends Response {
   public final boolean success;
   public Set<Peer> peers;
   public int counter;
+  public Map<Integer, Peer> peerContentMapping;
 
-  public AddPeerResponse(boolean success, Set<Peer> peers, int counter) {
+  public AddPeerResponse(boolean success, Set<Peer> peers, int counter, Map<Integer, Peer> peerContentMapping) {
     this.success = success;
     this.peers = peers;
     this.counter = counter;
+    this.peerContentMapping = peerContentMapping;
   }
 
   @Override public byte[] toBytes() {
@@ -27,11 +30,19 @@ public class AddPeerResponse extends Response {
     }
 
     StringBuilder peerStringBuilder = new StringBuilder();
+    peerStringBuilder.append("\n").append(counter);
+
     for (Peer peer : peers) {
       peerStringBuilder.append("\n");
-      peerStringBuilder.append(String.format("%s:%s", peer.getAddress(), peer.getPort(), counter));
+      peerStringBuilder.append(String.format("%s:%s", peer.getAddress(), peer.getPort()));
     }
-    peerStringBuilder.append("\n").append(counter);
+
+    for (Integer key : peerContentMapping.keySet()) {
+      Peer value = peerContentMapping.get(key);
+      peerStringBuilder.append("\n");
+      peerStringBuilder.append(String.format("%s:%s:%s", key, value.getAddress(), value.getPort()));
+    }
+
     String peerString = peerStringBuilder.toString();
     sb.append(String.format("\nContent-Length: %s\n", peerString.length()));
 

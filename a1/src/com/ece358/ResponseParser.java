@@ -19,20 +19,23 @@ public class ResponseParser {
       return allKeysResponseFromString(s);
     } else if (s.startsWith("UPDATECOUNTER")) {
       return updateCounterResponseFromString(s);
+    } else if (s.startsWith("UPDATEMAPPING")) {
+      return updateMappingResponseFromString(s);
     }
 
     return null;
   }
 
+  // ADDPEER\nSUCCESS\n<Content-Length: length>\n\n<counter>\n[<address:port>\n||<key:address:port>\n]
   static AddPeerResponse addPeerResponseFromString(String s) {
     if (s.startsWith("ADDPEER\nFAILURE")) {
-      return new AddPeerResponse(false, null, -1);
+      return new AddPeerResponse(false, null, -1, null);
     } else if (s.equals("ADDPEER\nSUCCESS\nContent-Length: 0\n\n")) {
-      return new AddPeerResponse(true, new HashSet<>(), 0);
+      return new AddPeerResponse(true, new HashSet<>(), 0, new HashMap<>());
     }
 
     String[] splitRequest = s.split("\n");
-    if (splitRequest.length < 6) {
+    if (splitRequest.length < 5) {
       return null;
     }
 
@@ -41,20 +44,26 @@ public class ResponseParser {
       return null;
     }
     Integer contentLength = Integer.valueOf(matcher.group(1));
+    contentLength -= splitRequest.length - 4; // To account for newlines
 
     int requestLength = 0;
     for (int i = 4; i < splitRequest.length; i++) {
       requestLength += splitRequest[i].length();
     }
-    contentLength -= splitRequest.length - 4; // To account for newlines
 
     if (contentLength == requestLength) {
       Set<Peer> peers = new HashSet<>();
-      for (int i = 4; i < splitRequest.length - 1; i++) {
+      Map<Integer, Peer> peerContentMapping = new HashMap<>();
+      for (int i = 5; i < splitRequest.length; i++) {
         String[] splitContent = splitRequest[i].split(":");
-        peers.add(new Peer(splitContent[0], Integer.valueOf(splitContent[1])));
+        if (splitContent.length == 2) {
+          peers.add(new Peer(splitContent[0], Integer.valueOf(splitContent[1])));
+        } else if (splitContent.length == 3) {
+          peerContentMapping.put(
+              Integer.valueOf(splitContent[0]), new Peer(splitContent[1], Integer.valueOf(splitContent[2])));
+        }
       }
-      return new AddPeerResponse(true, peers, Integer.valueOf(splitRequest[splitRequest.length - 1]));
+      return new AddPeerResponse(true, peers, Integer.valueOf(splitRequest[4]), peerContentMapping);
     } else {
       return null;
     }
@@ -129,6 +138,16 @@ public class ResponseParser {
       return new UpdateCounterResponse(true);
     } else if (s.startsWith("UPDATECOUNTER\nFAILURE")) {
       return new UpdateCounterResponse(false);
+    }
+
+    return null;
+  }
+
+  static UpdateContentMappingResponse updateMappingResponseFromString(String s) {
+    if (s.startsWith("UPDATEMAPPING\nSUCCESS")) {
+      return new UpdateContentMappingResponse(true);
+    } else if (s.startsWith("UPDATEMAPPING\nFAILURE")) {
+      return new UpdateContentMappingResponse(false);
     }
 
     return null;

@@ -18,6 +18,8 @@ public class RequestParser {
       return new AllKeysRequest();
     } else if (s.startsWith("UPDATECOUNTER")) {
       return updateCounterRequestFromString(s);
+    } else if (s.startsWith("UPDATEMAPPING")) {
+      return updateMappingRequestFromString(s);
     }
 
     return null;
@@ -60,10 +62,26 @@ public class RequestParser {
 
   public static UpdateCounterRequest updateCounterRequestFromString(String s) {
     String[] splitContent = verifyRequest(s);
-    if (splitContent == null || splitContent.length < 2) {
+    if (splitContent == null || splitContent.length < 3) {
       return null;
     }
 
     return new UpdateCounterRequest(splitContent[0], Integer.valueOf(splitContent[1]), Integer.valueOf(splitContent[2]));
+  }
+
+  public static UpdateContentMappingRequest updateMappingRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null || splitContent.length < 3) {
+      return null;
+    }
+
+    boolean add = s.contains("ADD");
+
+    return new UpdateContentMappingRequest(
+        splitContent[0],
+        Integer.valueOf(splitContent[1]),
+        Integer.valueOf(splitContent[2]),
+        add
+    );
   }
 }

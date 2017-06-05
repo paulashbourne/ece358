@@ -10,10 +10,12 @@ import java.util.Set;
 public class AddPeerResponse extends Response {
   public final boolean success;
   public Set<Peer> peers;
+  public int counter;
 
-  public AddPeerResponse(boolean success, Set<Peer> peers) {
+  public AddPeerResponse(boolean success, Set<Peer> peers, int counter) {
     this.success = success;
     this.peers = peers;
+    this.counter = counter;
   }
 
   @Override public byte[] toBytes() {
@@ -27,8 +29,9 @@ public class AddPeerResponse extends Response {
     StringBuilder peerStringBuilder = new StringBuilder();
     for (Peer peer : peers) {
       peerStringBuilder.append("\n");
-      peerStringBuilder.append(String.format("%s:%s", peer.getAddress(), peer.getPort()));
+      peerStringBuilder.append(String.format("%s:%s", peer.getAddress(), peer.getPort(), counter));
     }
+    peerStringBuilder.append("\n").append(counter);
     String peerString = peerStringBuilder.toString();
     sb.append(String.format("\nContent-Length: %s\n", peerString.length()));
 

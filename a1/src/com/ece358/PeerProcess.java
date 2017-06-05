@@ -63,6 +63,7 @@ public class PeerProcess {
         Request request = new AddPeerRequest(address, port);
         AddPeerResponse response =
             (AddPeerResponse) Utils.sendAndGetResponse(args[0], Integer.valueOf(args[1]), request);
+        globalContentCounter = response.counter;
         System.out.println(
             String.format("Added peer [address=%s, port=%s]", args[0], args[1]));
 
@@ -113,7 +114,7 @@ public class PeerProcess {
     if (untypedRequest instanceof AddPeerRequest) {
       AddPeerRequest request = (AddPeerRequest) untypedRequest;
       Peer newPeer = new Peer(request.address, request.port);
-      Response response = new AddPeerResponse(true, peers);
+      Response response = new AddPeerResponse(true, peers, globalContentCounter);
       peers.add(newPeer);
       System.out.println(
           String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),

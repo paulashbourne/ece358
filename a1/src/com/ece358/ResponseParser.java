@@ -26,13 +26,13 @@ public class ResponseParser {
 
   static AddPeerResponse addPeerResponseFromString(String s) {
     if (s.startsWith("ADDPEER\nFAILURE")) {
-      return new AddPeerResponse(false, null);
+      return new AddPeerResponse(false, null, -1);
     } else if (s.equals("ADDPEER\nSUCCESS\nContent-Length: 0\n\n")) {
-      return new AddPeerResponse(true, new HashSet<>());
+      return new AddPeerResponse(true, new HashSet<>(), 0);
     }
 
     String[] splitRequest = s.split("\n");
-    if (splitRequest.length < 5) {
+    if (splitRequest.length < 6) {
       return null;
     }
 
@@ -50,11 +50,11 @@ public class ResponseParser {
 
     if (contentLength == requestLength) {
       Set<Peer> peers = new HashSet<>();
-      for (int i = 4; i < splitRequest.length; i++) {
+      for (int i = 4; i < splitRequest.length - 1; i++) {
         String[] splitContent = splitRequest[i].split(":");
         peers.add(new Peer(splitContent[0], Integer.valueOf(splitContent[1])));
       }
-      return new AddPeerResponse(true, peers);
+      return new AddPeerResponse(true, peers, Integer.valueOf(splitRequest[splitRequest.length - 1]));
     } else {
       return null;
     }

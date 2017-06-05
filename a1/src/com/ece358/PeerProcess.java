@@ -140,6 +140,10 @@ public class PeerProcess {
     } else if (untypedRequest instanceof RemovePeerRequest) {
       rebalance();
       return new RemovePeerResponse(true);
+    } else if (untypedRequest instanceof UpdateCounterRequest) {
+      UpdateCounterRequest request = (UpdateCounterRequest) untypedRequest;
+      globalContentCounter = request.counter;
+      return new UpdateCounterResponse(true);
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();

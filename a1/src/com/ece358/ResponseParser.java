@@ -1,8 +1,6 @@
 package com.ece358;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,8 +13,12 @@ public class ResponseParser {
   static Response fromString(String s) {
     if (s.startsWith("ADDPEER")) {
       return addPeerResponseFromString(s);
+    } else if (s.startsWith("ADDCONTENT")) {
+      return addContentResponseFromString(s);
     } else if (s.startsWith("ALLKEYS")) {
       return allKeysResponseFromString(s);
+    } else if (s.startsWith("UPDATECOUNTER")) {
+      return updateCounterResponseFromString(s);
     }
 
     return null;
@@ -24,13 +26,13 @@ public class ResponseParser {
 
   static AddPeerResponse addPeerResponseFromString(String s) {
     if (s.startsWith("ADDPEER\nFAILURE")) {
-      return new AddPeerResponse(false, null);
+      return new AddPeerResponse(false, null, -1);
     } else if (s.equals("ADDPEER\nSUCCESS\nContent-Length: 0\n\n")) {
-      return new AddPeerResponse(true, new ArrayList<>());
+      return new AddPeerResponse(true, new HashSet<>(), 0);
     }
 
     String[] splitRequest = s.split("\n");
-    if (splitRequest.length < 5) {
+    if (splitRequest.length < 6) {
       return null;
     }
 
@@ -47,12 +49,12 @@ public class ResponseParser {
     contentLength -= splitRequest.length - 4; // To account for newlines
 
     if (contentLength == requestLength) {
-      List<Peer> peers = new LinkedList<>();
-      for (int i = 4; i < splitRequest.length; i++) {
+      Set<Peer> peers = new HashSet<>();
+      for (int i = 4; i < splitRequest.length - 1; i++) {
         String[] splitContent = splitRequest[i].split(":");
         peers.add(new Peer(splitContent[0], Integer.valueOf(splitContent[1])));
       }
-      return new AddPeerResponse(true, peers);
+      return new AddPeerResponse(true, peers, Integer.valueOf(splitRequest[splitRequest.length - 1]));
     } else {
       return null;
     }
@@ -93,5 +95,42 @@ public class ResponseParser {
     } else {
       return null;
     }
+  }
+
+  static AddContentResponse addContentResponseFromString(String s) {
+    if (s.startsWith("ADDCONTENT\nFAILURE")) {
+      return new AddContentResponse(false, -1);
+    }
+
+    String[] splitRequest = s.split("\n");
+    if (splitRequest.length < 4) {
+      return null;
+    }
+
+    Matcher matcher = contentLengthPattern.matcher(splitRequest[2]);
+    if (!matcher.matches()) {
+      return null;
+    }
+
+    Integer contentLength = Integer.valueOf(matcher.group(1));
+    int requestLength = splitRequest[3].length();
+
+    System.out.println(s);
+
+    if (contentLength == requestLength) {
+      return new AddContentResponse(true, Integer.valueOf(splitRequest[3]));
+    } else {
+      return null;
+    }
+  }
+
+  static UpdateCounterResponse updateCounterResponseFromString(String s) {
+    if (s.startsWith("UPDATECOUNTER\nSUCCESS")) {
+      return new UpdateCounterResponse(true);
+    } else if (s.startsWith("UPDATECOUNTER\nFAILURE")) {
+      return new UpdateCounterResponse(false);
+    }
+
+    return null;
   }
 }

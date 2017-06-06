@@ -157,6 +157,24 @@ public class PeerProcess {
       }
 
       return new UpdateContentMappingResponse(true);
+    } else if (untypedRequest instanceof LookupContentRequest) {
+      LookupContentRequest request = (LookupContentRequest) untypedRequest;
+      Integer key = Integer.valueOf(request.key);
+      if (localContentMappings.containsKey(key)) {
+        return new LookupContentResponse(true, localContentMappings.get(key));
+      } else if (!peerContentMappings.containsKey(key)) {
+        return new LookupContentResponse(false, null);
+      } else {
+        Peer peer = peerContentMappings.get(key);
+        LookupContentResponse response =
+            (LookupContentResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(),
+                request);
+        if (response.success) {
+          return new LookupContentResponse(true, response.content);
+        }
+
+        return new LookupContentResponse(false, null);
+      }
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();

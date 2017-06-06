@@ -20,9 +20,20 @@ public class RequestParser {
       return updateCounterRequestFromString(s);
     } else if (s.startsWith("UPDATEMAPPING")) {
       return updateMappingRequestFromString(s);
+    } else if (s.startsWith("LOOKUPCONTENT")) {
+      return lookupContentRequestFromString(s);
     }
 
     return null;
+  }
+
+  private static LookupContentRequest lookupContentRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null) {
+      return null;
+    }
+
+    return new LookupContentRequest(splitContent[0]);
   }
 
   public static String[] verifyRequest(String s) {

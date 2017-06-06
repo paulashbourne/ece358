@@ -22,6 +22,8 @@ public class RequestParser {
       return updateMappingRequestFromString(s);
     } else if (s.startsWith("LOOKUPCONTENT")) {
       return lookupContentRequestFromString(s);
+    } else if (s.startsWith("REMOVECONTENT")) {
+      return removeContentRequestFromString(s);
     }
 
     return null;
@@ -94,5 +96,14 @@ public class RequestParser {
         Integer.valueOf(splitContent[2]),
         add
     );
+  }
+
+  public static RemoveContentRequest removeContentRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null || splitContent.length < 1) {
+      return null;
+    }
+
+    return new RemoveContentRequest(Integer.valueOf(splitContent[0]));
   }
 }

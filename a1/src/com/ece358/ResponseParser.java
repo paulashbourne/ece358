@@ -23,6 +23,8 @@ public class ResponseParser {
       return updateMappingResponseFromString(s);
     } else if (s.startsWith("LOOKUPCONTENT")) {
       return lookupContentResponseFromString(s);
+    } else if (s.startsWith("REMOVECONTENT")) {
+      return removeContentResponseFromString(s);
     }
 
     return null;
@@ -190,6 +192,16 @@ public class ResponseParser {
       return new UpdateContentMappingResponse(true);
     } else if (s.startsWith("UPDATEMAPPING\nFAILURE")) {
       return new UpdateContentMappingResponse(false);
+    }
+
+    return null;
+  }
+
+  static RemoveContentResponse removeContentResponseFromString(String s) {
+    if (s.startsWith("REMOVECONTENT\nSUCCESS")) {
+      return new RemoveContentResponse(true);
+    } else if (s.startsWith("REMOVECONTENT\nFAILURE")) {
+      return new RemoveContentResponse(false);
     }
 
     return null;

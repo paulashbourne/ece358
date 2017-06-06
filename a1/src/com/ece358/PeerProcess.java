@@ -13,12 +13,14 @@ import java.util.Random;
 import java.util.*;
 
 public class PeerProcess {
+  private Peer me;
   private Set<Peer> peers;
   private HashMap<Integer, String> localContentMappings;
   private HashMap<Integer, Peer> peerContentMappings;
   private Integer globalContentCounter;
 
   public PeerProcess() {
+    me = null;
     peers = new HashSet<>();
     localContentMappings = new LinkedHashMap<>();
     peerContentMappings = new LinkedHashMap<>();
@@ -70,17 +72,20 @@ public class PeerProcess {
 
         for (Peer peer : response.peers) {
           if (peer.getAddress().equals(address) && peer.getPort().equals(port)) {
-            continue;
-          }
+            // This is me
+            me = peer;
 
-          request = new AddPeerRequest(address, port);
-          response = (AddPeerResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
-          if (response.success) {
-            System.out.println(
-                String.format("Added peer [address=%s, port=%d]", peer.getAddress(), peer.getPort()));
-          }
+          } else {
+            // Ping the peer, let them know I'm here
+            request = new AddPeerRequest(address, port);
+            response = (AddPeerResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
+            if (response.success) {
+              System.out.println(
+                  String.format("Added peer [address=%s, port=%d]", peer.getAddress(), peer.getPort()));
+            }
 
-          peers.add(peer);
+            peers.add(peer);
+          }
         }
 
         peers.add(new Peer(args[0], Integer.valueOf(args[1])));
@@ -103,9 +108,12 @@ public class PeerProcess {
     Response response = handleRequest(request);
     socket.getOutputStream().write(response.toBytes());
     socket.close();
-    if (response instanceof RemovePeerResponse) {
-      // Kill peer process
-      System.exit(0);
+    if (request instanceof RemovePeerRequest) {
+      RemovePeerRequest removeRequest = (RemovePeerRequest) request;
+      if (removeRequest.address == me.getAddress() && removeRequest.port == me.getPort()) {
+        // I am the peer being removed - kill this process
+        System.exit(0);
+      }
     }
   }
 
@@ -119,9 +127,31 @@ public class PeerProcess {
     return response;
   }
 
-  private Response handleRemovePeerRequest(RemovePeerRequest request) {
-    // Notify each of my peers that I am no longer in the network
-    // Distribute my content to peers
+  private Response handleRemovePeerRequest(RemovePeerRequest request) throws IOException {
+    if (request.address == me.getAddress() && request.port == me.getPort()) {
+      // I am the peer being removed
+      // Notify each of my peers that I am no longer in the network
+      for (Peer peer : peers) {
+        // Notify by forwarding the same request
+        RemovePeerResponse response = (RemovePeerResponse)
+          Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
+        if (response.success) {
+          System.out.println("Successfully notified peer");
+        }
+      }
+      // TODO: Distribute my content to peers
+      // Process will be killed by socket handler
+    } else {
+      // Remove this peer from my list of peers
+      Iterator<Peer> iterator = peers.iterator();
+      while (iterator.hasNext()) {
+        Peer peer = iterator.next();
+        if (request.address == peer.getAddress() && request.port == peer.getPort()) {
+          iterator.remove();
+          break;
+        }
+      }
+    }
     // Reply and exit (exit handled by socket handler)
     return new RemovePeerResponse(true);
   }

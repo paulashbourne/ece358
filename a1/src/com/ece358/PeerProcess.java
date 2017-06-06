@@ -27,6 +27,26 @@ public class PeerProcess {
     globalContentCounter = 0;
   }
 
+  private static int getMinContentPerPeer(int numContent, int numPeers) {
+    return (int) Math.floor((double)numContent / numPeers);
+  }
+
+  private static int getMaxContentPerPeer(int numContent, int numPeers) {
+    return (int) Math.ceil((double)numContent / numPeers);
+  }
+
+  private HashMap<Peer, Integer> getContentCountByPeer() {
+    HashMap<Peer, Integer> result = new HashMap<>();
+    result.put(me, 0);
+    for (Peer peer : peers) {
+      result.put(peer, 0);
+    }
+    for (Peer peer : peerContentMappings.values()) {
+      result.put(peer, result.get(peer) + 1);
+    }
+    return result;
+  }
+
   public void start(String[] args) throws SocketException {
     ServerSocket serverSocket;
     // TODO(jgulbronson) - add limit to retries
@@ -157,21 +177,45 @@ public class PeerProcess {
     return new RemovePeerResponse(true);
   }
 
-  private Response handleAddContentRequest(AddContentRequest request) {
+  private Response handleAddContentRequest(AddContentRequest request) throws IOException {
     String content = request.content;
-    Peer me = new Peer(request.address, request.port);
-    localContentMappings.put(globalContentCounter, content);
-    peerContentMappings.put(globalContentCounter, me);
-
+    // Prepare response
     AddContentResponse response = new AddContentResponse(true, globalContentCounter);
 
+    if (!request.propagate) {
+      // Accept the content and immediately return without updating anything else
+      localContentMappings.put(globalContentCounter, content);
+      peerContentMappings.put(globalContentCounter, me);
+      return response;
+    }
+
+    // Check if I have space for more content
+    int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size() + 1);
+    HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
+    if (countByPeer.get(me) >= maxContent) {
+      // Forward the data to a peer
+      // Find an eligible peer
+      Peer peer = null;
+      for (Peer p : peers) {
+        if (countByPeer.get(p) < maxContent) {
+          peer = p;
+          break;
+        }
+      }
+      // Update mapping
+      peerContentMappings.put(globalContentCounter, peer);
+      // Forward the request - tell the peer to accept it without propogating changes
+      // to the mappings (I'll take care of it)
+      AddContentRequest forward = new AddContentRequest(peer.getAddress(), peer.getPort(), request.content, false);
+      Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), forward);
+    } else {
+      localContentMappings.put(globalContentCounter, content);
+      peerContentMappings.put(globalContentCounter, me);
+    }
+
     peers.forEach(peer -> updateContentMapping(peer, globalContentCounter, true));
-
     globalContentCounter++;
-
     peers.forEach(this::notifyCounterChange);
-
-    rebalance();
 
     return response;
   }

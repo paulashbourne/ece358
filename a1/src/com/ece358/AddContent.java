@@ -8,7 +8,7 @@ public class AddContent {
     int port = Integer.valueOf(args[1]);
     String content = args[2];
 
-    AddContentRequest request = new AddContentRequest(ipAddress, port, content);
+    AddContentRequest request = new AddContentRequest(ipAddress, port, content, true);
     try {
       AddContentResponse response = (AddContentResponse) Utils.sendAndGetResponse(ipAddress, port, request);
       if (!response.success) {

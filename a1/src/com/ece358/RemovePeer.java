@@ -4,10 +4,12 @@ import java.io.IOException;
 public class RemovePeer {
   public static void main(String[] args) {
     // write your code here
-    Request request = new RemovePeerRequest();
+    String address = args[0];
+    Integer port = Integer.valueOf(args[1]);
+    Request request = new RemovePeerRequest(address, port);
     try {
       RemovePeerResponse response = (RemovePeerResponse)
-        Utils.sendAndGetResponse(args[0], Integer.valueOf(args[1]), request);
+        Utils.sendAndGetResponse(address, port, request);
     } catch (IOException e) {
       System.err.println("Error: no such peer");
       System.exit(1);

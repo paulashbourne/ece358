@@ -70,7 +70,14 @@ public class RequestParser {
       return null;
     }
 
-    return new AddContentRequest(splitContent[0], Integer.valueOf(splitContent[1]), splitContent[2]);
+    boolean propagate = !s.contains("NOPROPAGATE");
+
+    return new AddContentRequest(
+        splitContent[0],
+        Integer.valueOf(splitContent[1]),
+        splitContent[2],
+        propagate
+    );
   }
 
   public static UpdateCounterRequest updateCounterRequestFromString(String s) {

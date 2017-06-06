@@ -9,11 +9,13 @@ public class AddContentRequest extends Request {
   public final String address;
   public final Integer port;
   public final String content;
+  public final boolean propagate;
 
-  public AddContentRequest(String address, Integer port, String content) {
+  public AddContentRequest(String address, Integer port, String content, boolean propagate) {
     this.address = address;
     this.port = port;
     this.content = content;
+    this.propagate = propagate;
   }
 
   @Override
@@ -21,6 +23,7 @@ public class AddContentRequest extends Request {
     String request = String.format("%s:%s:%s", address, port, content);
     return new StringBuilder()
         .append("ADDCONTENT\n")
+        .append((propagate ? "PROPAGATE\n" : "NOPROPAGATE\n"))
         .append("Content-Length: " + request.length() + "\n")
         .append("\n")
         .append(request)

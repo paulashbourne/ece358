@@ -134,7 +134,7 @@ public class PeerProcess {
 
     AddContentResponse response = new AddContentResponse(true, globalContentCounter);
 
-    peers.forEach(this::updateContentMapping);
+    peers.forEach(peer -> updateContentMapping(peer, globalContentCounter, true));
 
     globalContentCounter++;
 
@@ -181,6 +181,18 @@ public class PeerProcess {
     }
   }
 
+  private Response handleRemoveContentRequest(RemoveContentRequest request) {
+    if (localContentMappings.containsKey(request.key)) {
+      localContentMappings.remove(request.key);
+
+      peers.forEach(peer -> updateContentMapping(peer, request.key, false));
+
+      return new RemoveContentResponse(true);
+    } else {
+      return new RemoveContentResponse(false);
+    }
+  }
+
   private Response handleAllKeysRequest(AllKeysRequest request) {
     return new AllKeysResponse(true, localContentMappings.keySet());
   }
@@ -215,6 +227,10 @@ public class PeerProcess {
       /* LOOKUP CONTENT REQUEST */
       return handleLookupContentRequest((LookupContentRequest) untypedRequest);
 
+    } else if (untypedRequest instanceof RemoveContentRequest) {
+      /* REMOVE CONTENT REQUEST */
+      return handleRemoveContentRequest((RemoveContentRequest) untypedRequest);
+
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();
@@ -230,9 +246,9 @@ public class PeerProcess {
     }
   }
 
-  private void updateContentMapping(Peer peer) {
+  private void updateContentMapping(Peer peer, Integer key, boolean add) {
     UpdateContentMappingRequest request =
-        new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), globalContentCounter, true);
+        new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), key, add);
     try {
       Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
     } catch (IOException e) {

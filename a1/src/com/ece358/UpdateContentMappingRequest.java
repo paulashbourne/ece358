@@ -21,7 +21,6 @@ public class UpdateContentMappingRequest extends Request {
   @Override
   byte[] toBytes() {
     String request = String.format("%s:%s:%s", address, port, key);
-    System.out.println("UpdateContentMappingRequest toBytes()");
     return new StringBuilder()
         .append("UPDATEMAPPING")
         .append((add ? "ADD\n" : "REMOVE\n"))

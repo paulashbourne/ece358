@@ -142,9 +142,6 @@ public class PeerProcess {
     Peer newPeer = new Peer(request.address, request.port);
     Response response = new AddPeerResponse(true, peers, globalContentCounter, peerContentMappings);
     peers.add(newPeer);
-    //System.out.println(
-    //    String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
-    //        newPeer.getPort()));
     return response;
   }
 
@@ -262,6 +259,8 @@ public class PeerProcess {
       peerContentMappings.remove(request.key);
       peers.forEach(peer -> updateContentMapping(peer, request.key, false));
 
+      // TODO: If beloe minimum, grab content frm another peer
+
       return new RemoveContentResponse(true);
     } else {
       return new RemoveContentResponse(false);
@@ -329,18 +328,5 @@ public class PeerProcess {
     } catch (IOException e) {
       System.err.println("Error: no such peer");
     }
-  }
-
-  private void rebalance() {
-    /*
-     * addPeer:
-     *  - Grab content from other peers
-     * removePeer:
-     *  - Push content to other peers
-     * addContent:
-     *  - Push to a single peer
-     * removeContenxt:
-     *  - Grab content from another peer
-     */
   }
 }

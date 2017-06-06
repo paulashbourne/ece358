@@ -109,72 +109,112 @@ public class PeerProcess {
     }
   }
 
+  private Response handleAddPeerRequest(AddPeerRequest request) {
+    Peer newPeer = new Peer(request.address, request.port);
+    Response response = new AddPeerResponse(true, peers, globalContentCounter, peerContentMappings);
+    peers.add(newPeer);
+    System.out.println(
+        String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
+            newPeer.getPort()));
+    return response;
+  }
+
+  private Response handleRemovePeerRequest(RemovePeerRequest request) {
+    // Notify each of my peers that I am no longer in the network
+    // Distribute my content to peers
+    // Reply and exit (exit handled by socket handler)
+    return new RemovePeerResponse(true);
+  }
+
+  private Response handleAddContentRequest(AddContentRequest request) {
+    String content = request.content;
+    Peer me = new Peer(request.address, request.port);
+    localContentMappings.put(globalContentCounter, content);
+    peerContentMappings.put(globalContentCounter, me);
+
+    AddContentResponse response = new AddContentResponse(true, globalContentCounter);
+
+    peers.forEach(this::updateContentMapping);
+
+    globalContentCounter++;
+
+    peers.forEach(this::notifyCounterChange);
+
+    rebalance();
+
+    return response;
+  }
+
+  private Response handleUpdateCounterRequest(UpdateCounterRequest request) {
+    globalContentCounter = request.counter;
+    return new UpdateCounterResponse(true);
+  }
+
+  private Response handleUpdateContentMappingRequest(UpdateContentMappingRequest request) {
+    if (request.add) {
+      peerContentMappings.put(request.key, new Peer(request.address, request.port));
+    } else if (peerContentMappings.containsKey(request.key)) {
+      peerContentMappings.remove(request.key);
+    } else {
+      return new UpdateContentMappingResponse(false);
+    }
+
+    return new UpdateContentMappingResponse(true);
+  }
+
+  private Response handleLookupContentRequest(LookupContentRequest request) throws IOException {
+    Integer key = Integer.valueOf(request.key);
+    if (localContentMappings.containsKey(key)) {
+      return new LookupContentResponse(true, localContentMappings.get(key));
+    } else if (!peerContentMappings.containsKey(key)) {
+      return new LookupContentResponse(false, null);
+    } else {
+      Peer peer = peerContentMappings.get(key);
+      LookupContentResponse response =
+          (LookupContentResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(),
+              request);
+      if (response.success) {
+        return new LookupContentResponse(true, response.content);
+      }
+
+      return new LookupContentResponse(false, null);
+    }
+  }
+
+  private Response handleAllKeysRequest(AllKeysRequest request) {
+    return new AllKeysResponse(true, localContentMappings.keySet());
+  }
+
   public Response handleRequest(Request untypedRequest) throws IOException {
+
     if (untypedRequest instanceof AddPeerRequest) {
-      AddPeerRequest request = (AddPeerRequest) untypedRequest;
-      Peer newPeer = new Peer(request.address, request.port);
-      Response response = new AddPeerResponse(true, peers, globalContentCounter, peerContentMappings);
-      peers.add(newPeer);
-      System.out.println(
-          String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
-              newPeer.getPort()));
-      return response;
+      /* ADD PEER REQUEST */
+      return handleAddPeerRequest((AddPeerRequest) untypedRequest);
+
     } else if (untypedRequest instanceof AddContentRequest) {
-      AddContentRequest request = (AddContentRequest) untypedRequest;
-      String content = request.content;
-      Peer me = new Peer(request.address, request.port);
-      localContentMappings.put(globalContentCounter, content);
-      peerContentMappings.put(globalContentCounter, me);
+      /* ADD CONTENT REQUEST */
+      return handleAddContentRequest((AddContentRequest) untypedRequest);
 
-      AddContentResponse response = new AddContentResponse(true, globalContentCounter);
-
-      peers.forEach(this::updateContentMapping);
-
-      globalContentCounter++;
-
-      peers.forEach(this::notifyCounterChange);
-
-      rebalance();
-
-      return response;
     } else if (untypedRequest instanceof AllKeysRequest) {
-      return new AllKeysResponse(true, localContentMappings.keySet());
+      /* ALL KEYS REQUEST */
+      return handleAllKeysRequest((AllKeysRequest) untypedRequest);
+
     } else if (untypedRequest instanceof RemovePeerRequest) {
-      rebalance();
-      return new RemovePeerResponse(true);
+      /* REMOVE PEER REQUEST */
+      return handleRemovePeerRequest((RemovePeerRequest) untypedRequest);
+
     } else if (untypedRequest instanceof UpdateCounterRequest) {
-      UpdateCounterRequest request = (UpdateCounterRequest) untypedRequest;
-      globalContentCounter = request.counter;
-      return new UpdateCounterResponse(true);
+      /* UPDATE COUNTER REQUEST */
+      return handleUpdateCounterRequest((UpdateCounterRequest) untypedRequest);
+
     } else if (untypedRequest instanceof UpdateContentMappingRequest) {
-      UpdateContentMappingRequest request = (UpdateContentMappingRequest) untypedRequest;
-      if (request.add) {
-        peerContentMappings.put(request.key, new Peer(request.address, request.port));
-      } else if (peerContentMappings.containsKey(request.key)) {
-        peerContentMappings.remove(request.key);
-      } else {
-        return new UpdateContentMappingResponse(false);
-      }
+      /* UPDATE CONTENT REQUEST */
+      return handleUpdateContentMappingRequest((UpdateContentMappingRequest) untypedRequest);
 
-      return new UpdateContentMappingResponse(true);
     } else if (untypedRequest instanceof LookupContentRequest) {
-      LookupContentRequest request = (LookupContentRequest) untypedRequest;
-      Integer key = Integer.valueOf(request.key);
-      if (localContentMappings.containsKey(key)) {
-        return new LookupContentResponse(true, localContentMappings.get(key));
-      } else if (!peerContentMappings.containsKey(key)) {
-        return new LookupContentResponse(false, null);
-      } else {
-        Peer peer = peerContentMappings.get(key);
-        LookupContentResponse response =
-            (LookupContentResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(),
-                request);
-        if (response.success) {
-          return new LookupContentResponse(true, response.content);
-        }
+      /* LOOKUP CONTENT REQUEST */
+      return handleLookupContentRequest((LookupContentRequest) untypedRequest);
 
-        return new LookupContentResponse(false, null);
-      }
     } else {
       System.err.println("Command not recognized");
       throw new RuntimeException();

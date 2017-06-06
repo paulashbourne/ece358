@@ -21,9 +21,51 @@ public class ResponseParser {
       return updateCounterResponseFromString(s);
     } else if (s.startsWith("UPDATEMAPPING")) {
       return updateMappingResponseFromString(s);
+    } else if (s.startsWith("LOOKUPCONTENT")) {
+      return lookupContentResponseFromString(s);
     }
 
     return null;
+  }
+
+  private static LookupContentResponse lookupContentResponseFromString(String s) {
+    if (s.startsWith("LOOKUPCONTENT\nFAILURE")) {
+      return new LookupContentResponse(false, null);
+    }
+
+    String[] splitRequest = s.split("\n");
+    if (splitRequest.length < 5) {
+      return null;
+    }
+
+    Matcher matcher = contentLengthPattern.matcher(splitRequest[2]);
+    if (!matcher.matches()) {
+      return null;
+    }
+    int fourthNewline = nthIndexOf(s, "\n", 4);
+    Integer contentLength = Integer.valueOf(matcher.group(1));
+
+    int requestLength = s.length() - 1 - fourthNewline;
+
+    if (contentLength == requestLength) {
+      return new LookupContentResponse(true, s.substring(fourthNewline + 1));
+    } else {
+      return null;
+    }
+  }
+
+  private static int nthIndexOf(String s, String ch, int n) {
+    for (int i = 0; i < s.length(); i++) {
+      if (s.substring(i, i + 1).equals(ch)) {
+        n -= 1;
+      }
+
+      if (n == 0) {
+        return i;
+      }
+    }
+
+    return -1;
   }
 
   // ADDPEER\nSUCCESS\n<Content-Length: length>\n\n<counter>\n[<address:port>\n||<key:address:port>\n]

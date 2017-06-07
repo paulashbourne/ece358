@@ -197,7 +197,7 @@ public class PeerProcess {
     if (localContentMappings.containsKey(key)) {
       return new LookupContentResponse(true, localContentMappings.get(key));
     } else if (!peerContentMappings.containsKey(key)) {
-      return new LookupContentResponse(false, null);
+      return new LookupContentResponse(false, "");
     } else {
       Peer peer = peerContentMappings.get(key);
       LookupContentResponse response =
@@ -207,14 +207,14 @@ public class PeerProcess {
         return new LookupContentResponse(true, response.content);
       }
 
-      return new LookupContentResponse(false, null);
+      return new LookupContentResponse(false, "");
     }
   }
 
   private Response handleRemoveContentRequest(RemoveContentRequest request) {
     if (localContentMappings.containsKey(request.key)) {
       localContentMappings.remove(request.key);
-
+      peerContentMappings.remove(request.key);
       peers.forEach(peer -> updateContentMapping(peer, request.key, false));
 
       return new RemoveContentResponse(true);

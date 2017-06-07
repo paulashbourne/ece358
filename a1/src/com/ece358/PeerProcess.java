@@ -24,7 +24,7 @@ public class PeerProcess {
     peers = new HashSet<>();
     localContentMappings = new LinkedHashMap<>();
     peerContentMappings = new LinkedHashMap<>();
-    globalContentCounter = 0;
+    globalContentCounter = 1;
   }
 
   private static int getMinContentPerPeer(int numContent, int numPeers) {

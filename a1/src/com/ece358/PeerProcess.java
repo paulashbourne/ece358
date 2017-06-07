@@ -47,6 +47,32 @@ public class PeerProcess {
     return result;
   }
 
+  /*
+   * Finds a peer who has space to host more data
+   */
+  private Peer findPeerWithSpace(int maxContent) {
+    HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
+    for (Peer peer : peers) {
+      if (countByPeer.get(peer) < maxContent) {
+        return peer;
+      }
+    }
+    return null;
+  }
+
+  /*
+   * Finds a peer who has space to host more data
+   */
+  private Peer findExtraContent(int minContent) {
+    HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
+    for (Peer peer : peers) {
+      if (countByPeer.get(peer) > minContent) {
+        return peer;
+      }
+    }
+    return null;
+  }
+
   public void start(String[] args) throws SocketException {
     ServerSocket serverSocket;
     // TODO(jgulbronson) - add limit to retries
@@ -149,6 +175,7 @@ public class PeerProcess {
   private Response handleRemovePeerRequest(RemovePeerRequest request) throws IOException {
     if (request.address.equals(me.getAddress()) && request.port.equals(me.getPort())) {
       // I am the peer being removed
+
       // Notify each of my peers that I am no longer in the network
       for (Peer peer : peers) {
         // Notify by forwarding the same request
@@ -158,8 +185,26 @@ public class PeerProcess {
           //System.out.println("Successfully notified peer");
         }
       }
-      // TODO: Distribute my content to peers
-      // Process will be killed by socket handler
+
+      // Distribute my content to peers
+      int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
+      for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {
+        Integer key = entry.getKey();
+        String content = entry.getValue();
+        // Find a peer to send this data to
+        Peer dest = findPeerWithSpace(maxContent);
+        // Update local mapping
+        peerContentMappings.put(key, dest);
+        // Forward the data - tell the peer to propagate the mapping change to the rest of
+        // the network. Won't cause deadlock because I have already removed myself from
+        // their mapping
+        AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), content, true);
+        Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), forward);
+      }
+
+      // Reply and exit (exit handled by socket handler)
+      return new RemovePeerResponse(true);
+
     } else {
       // Remove this peer from my list of peers
       Iterator<Peer> iterator = peers.iterator();
@@ -170,9 +215,8 @@ public class PeerProcess {
           break;
         }
       }
+      return new RemovePeerResponse(true);
     }
-    // Reply and exit (exit handled by socket handler)
-    return new RemovePeerResponse(true);
   }
 
   private Response handleAddContentRequest(AddContentRequest request) throws IOException {
@@ -188,24 +232,21 @@ public class PeerProcess {
     }
 
     // Check if I have space for more content
-    int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size() + 1);
+    int maxContent = getMaxContentPerPeer(
+        peerContentMappings.size(),
+        peers.size() + 1 // peers.size() does not include me
+    );
     HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
     if (countByPeer.get(me) >= maxContent) {
       // Forward the data to a peer
       // Find an eligible peer
-      Peer peer = null;
-      for (Peer p : peers) {
-        if (countByPeer.get(p) < maxContent) {
-          peer = p;
-          break;
-        }
-      }
+      Peer dest = findPeerWithSpace(maxContent);
       // Update mapping
-      peerContentMappings.put(globalContentCounter, peer);
+      peerContentMappings.put(globalContentCounter, dest);
       // Forward the request - tell the peer to accept it without propogating changes
       // to the mappings (I'll take care of it)
-      AddContentRequest forward = new AddContentRequest(peer.getAddress(), peer.getPort(), request.content, false);
-      Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), forward);
+      AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), request.content, false);
+      Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), forward);
     } else {
       localContentMappings.put(globalContentCounter, content);
       peerContentMappings.put(globalContentCounter, me);

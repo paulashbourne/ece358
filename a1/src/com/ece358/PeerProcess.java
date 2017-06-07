@@ -266,7 +266,9 @@ public class PeerProcess {
     peers.forEach(peer -> updateContentMapping(peer, globalContentCounter, true));
     // Increment global content counter
     globalContentCounter++;
-    peers.forEach(peer -> notifyCounterChange(peer));
+    for (Peer peer : peers) {
+      notifyCounterChange(peer);
+    }
 
     return response;
   }
@@ -305,7 +307,7 @@ public class PeerProcess {
     }
   }
 
-  private Response handleRemoveContentRequest(RemoveContentRequest request) {
+  private Response handleRemoveContentRequest(RemoveContentRequest request) throws IOException {
     if (localContentMappings.containsKey(request.key)) {
       localContentMappings.remove(request.key);
       peerContentMappings.remove(request.key);
@@ -316,7 +318,7 @@ public class PeerProcess {
       return new RemoveContentResponse(true);
     } else if (peerContentMappings.containsKey(request.key)) {
       // Forward the request to the appropriate peer
-      // HERE
+      forwardRequest(peerContentMappings.get(request.key), request);
       return new RemoveContentResponse(false);
     } else {
       return new RemoveContentResponse(false);
@@ -367,12 +369,9 @@ public class PeerProcess {
     }
   }
 
-  private void notifyCounterChange(Peer peer) {
+  private void notifyCounterChange(Peer peer) throws IOException {
     UpdateCounterRequest request = new UpdateCounterRequest(peer.getAddress(), peer.getPort(), globalContentCounter);
-    try {
-      forwardRequest(peer, request);
-    } catch (IOException e) {
-    }
+    forwardRequest(peer, request);
   }
 
   private void updateContentMapping(Peer peer, Integer key, boolean add) {

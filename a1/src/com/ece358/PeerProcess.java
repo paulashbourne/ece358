@@ -226,7 +226,7 @@ public class PeerProcess {
 
       // Distribute my content to peers
       // If no more peers, then the content dies
-      if (peers.size() > 0 && false) { // TODO: Fix this code (findPeerWithSpace returns null)
+      if (peers.size() > 0) {
         int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
         System.out.println("Max content");
         System.out.println(maxContent);

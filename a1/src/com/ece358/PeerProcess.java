@@ -185,20 +185,23 @@ public class PeerProcess {
       }
 
       // Distribute my content to peers
-      int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
-      HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
-      for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {
-        Integer key = entry.getKey();
-        String content = entry.getValue();
-        // Find a peer to send this data to
-        Peer dest = findPeerWithSpace(maxContent, contentCountByPeer);
-        // Update local mapping
-        peerContentMappings.put(key, dest);
-        // Forward the data - tell the peer to propagate the mapping change to the rest of
-        // the network. Won't cause deadlock because I have already removed myself from
-        // their mapping
-        AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), content, true);
-        Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), forward);
+      // If no more peers, then the content dies
+      if (peers.size() > 0) {
+        int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
+        HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
+        for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {
+          Integer key = entry.getKey();
+          String content = entry.getValue();
+          // Find a peer to send this data to
+          Peer dest = findPeerWithSpace(maxContent, contentCountByPeer);
+          // Update local mapping
+          peerContentMappings.put(key, dest);
+          // Forward the data - tell the peer to propagate the mapping change to the rest of
+          // the network. Won't cause deadlock because I have already removed myself from
+          // their mapping
+          AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), content, true);
+          Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), forward);
+        }
       }
 
       // Reply and exit (exit handled by socket handler)

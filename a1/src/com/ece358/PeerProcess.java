@@ -318,8 +318,7 @@ public class PeerProcess {
       return new RemoveContentResponse(true);
     } else if (peerContentMappings.containsKey(request.key)) {
       // Forward the request to the appropriate peer
-      forwardRequest(peerContentMappings.get(request.key), request);
-      return new RemoveContentResponse(false);
+      return forwardRequest(peerContentMappings.get(request.key), request);
     } else {
       return new RemoveContentResponse(false);
     }

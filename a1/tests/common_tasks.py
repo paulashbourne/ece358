@@ -46,8 +46,6 @@ def add_peer(ip_port):
 
     (rc, out, err,timeout) = execute_command('./addpeer {}'.format(ip_port))
 
-    print (rc, out, err, timeout)
-
     if rc != 0:
         comments.append('[addpeer] Return Code is: {}'.format(rc))
     if err != '':
@@ -102,13 +100,10 @@ def add_content(ip_port, content):
 
     if rc != 0:
         comments.append('[addcontent] Return Code is: {}'.format(rc))
-	print comments
     if err != '':
         comments.append('[addcontent] Error String: {}'.format(err))
-	print comments
     if timeout != False:
         comments.append('[addcontent] Timed Out!')
-	print comments
         return (key,comments)
 
     if not is_int(out):

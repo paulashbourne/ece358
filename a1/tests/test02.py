@@ -128,7 +128,6 @@ def test02():
 
     ## Error Checking: addcontent
     if len(comments) != 0:
-	print comments
         print 'AA'
         test02_comments.extend(comments)
     else:

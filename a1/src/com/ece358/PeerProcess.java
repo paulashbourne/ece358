@@ -112,7 +112,7 @@ public class PeerProcess {
     me = new Peer(address, port);
     System.out.println(String.format("%s %d", address, port));
 
-    if (args.length == 3) {
+    if (args.length == 2) {
       try {
         Request request = new AddPeerRequest(address, port);
         Peer destPeer = new Peer(args[0], Integer.valueOf(args[1]));

@@ -120,13 +120,22 @@ public class RequestParser {
   }
 
   public static RemoveContentRequest removeContentRequestFromString(String s) {
-    String[] splitContent = verifyRequest(s);
-    if (splitContent == null || splitContent.length < 4) {
+    String[] splitRequest = s.split("\n");
+    if (splitRequest.length < 4) {
+      return null;
+    }
+    Matcher matcher = contentLengthPattern.matcher(splitRequest[1]);
+    if (!matcher.matches()) {
+      return null;
+    }
+    Integer contentLength = Integer.valueOf(matcher.group(1));
+    if (!(splitRequest.length == 5) || !(contentLength == splitRequest[4].length())) {
       return null;
     }
 
-    boolean propagate = !splitContent[3].equals("NOPROPAGATE");
+    String key = splitRequest[4].trim();
+    boolean propagate = !splitRequest[3].equals("NOPROPAGATE");
 
-    return new RemoveContentRequest(Integer.valueOf(splitContent[0]), propagate);
+    return new RemoveContentRequest(Integer.valueOf(key), propagate);
   }
 }

@@ -263,10 +263,11 @@ public class PeerProcess {
       peerContentMappings.put(globalContentCounter, me);
     }
 
-    peers.forEach(peer -> updateContentMapping(peer, globalContentCounter, true));
     // Increment global content counter
+    // Update content mappings and global counter for each peer
     globalContentCounter++;
     for (Peer peer : peers) {
+      updateContentMapping(peer, globalContentCounter, true);
       notifyCounterChange(peer);
     }
 
@@ -311,7 +312,9 @@ public class PeerProcess {
     if (localContentMappings.containsKey(request.key)) {
       localContentMappings.remove(request.key);
       peerContentMappings.remove(request.key);
-      peers.forEach(peer -> updateContentMapping(peer, request.key, false));
+      for (Peer peer : peers) {
+        updateContentMapping(peer, request.key, false);
+      }
 
       // TODO: If below minimum, grab content from another peer
 
@@ -373,13 +376,9 @@ public class PeerProcess {
     forwardRequest(peer, request);
   }
 
-  private void updateContentMapping(Peer peer, Integer key, boolean add) {
+  private void updateContentMapping(Peer peer, Integer key, boolean add) throws IOException {
     UpdateContentMappingRequest request =
       new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), key, add);
-    try {
-      forwardRequest(peer, request);
-    } catch (IOException e) {
-      System.err.println("Error: no such peer");
-    }
+    forwardRequest(peer, request);
   }
 }

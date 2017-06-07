@@ -252,7 +252,7 @@ public class PeerProcess {
       Iterator<Peer> iterator = peers.iterator();
       while (iterator.hasNext()) {
         Peer peer = iterator.next();
-        if (request.address.equals(peer.getAddress()) && request.port.equals(me.getPort())) {
+        if (request.address.equals(peer.getAddress()) && request.port.equals(peer.getPort())) {
           iterator.remove();
           break;
         }

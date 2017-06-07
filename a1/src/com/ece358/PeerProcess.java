@@ -83,7 +83,7 @@ public class PeerProcess {
       Integer key = null;
       for (Map.Entry<Integer, Peer> entry : peerContentMappings.entrySet()) {
         Peer peer = entry.getValue();
-        if (peer == victim) {
+        if (peer.equals(victim)) {
           key = entry.getKey();
           break;
         }

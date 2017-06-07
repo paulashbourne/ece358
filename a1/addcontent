@@ -1,3 +1,3 @@
 #!/bin/bash
 
-java -cp src/ com.ece358.AddContent "$@" &
+java -cp src/ com.ece358.AddContent "$@"

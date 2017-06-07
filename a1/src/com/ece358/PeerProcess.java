@@ -60,15 +60,15 @@ public class PeerProcess {
     port = serverSocket.getLocalPort();
     System.out.println(String.format("%s %d", address, port));
 
-    if (args.length > 0) {
+    if (args.length == 3) {
       try {
         Request request = new AddPeerRequest(address, port);
         AddPeerResponse response =
             (AddPeerResponse) Utils.sendAndGetResponse(args[0], Integer.valueOf(args[1]), request);
         globalContentCounter = response.counter;
         peerContentMappings = (HashMap<Integer, Peer>) response.peerContentMapping;
-        System.out.println(
-            String.format("Added peer [address=%s, port=%s]", args[0], args[1]));
+        //System.out.println(
+        //    String.format("Added peer [address=%s, port=%s]", args[0], args[1]));
 
         for (Peer peer : response.peers) {
           if (peer.getAddress().equals(address) && peer.getPort().equals(port)) {
@@ -79,10 +79,10 @@ public class PeerProcess {
             // Ping the peer, let them know I'm here
             request = new AddPeerRequest(address, port);
             response = (AddPeerResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
-            if (response.success) {
-              System.out.println(
-                  String.format("Added peer [address=%s, port=%d]", peer.getAddress(), peer.getPort()));
-            }
+            //if (response.success) {
+            //  System.out.println(
+            //      String.format("Added peer [address=%s, port=%d]", peer.getAddress(), peer.getPort()));
+            //}
 
             peers.add(peer);
           }
@@ -121,9 +121,9 @@ public class PeerProcess {
     Peer newPeer = new Peer(request.address, request.port);
     Response response = new AddPeerResponse(true, peers, globalContentCounter, peerContentMappings);
     peers.add(newPeer);
-    System.out.println(
-        String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
-            newPeer.getPort()));
+    //System.out.println(
+    //    String.format("Added peer [address=%s, port=%d]", newPeer.getAddress(),
+    //        newPeer.getPort()));
     return response;
   }
 
@@ -136,7 +136,7 @@ public class PeerProcess {
         RemovePeerResponse response = (RemovePeerResponse)
           Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
         if (response.success) {
-          System.out.println("Successfully notified peer");
+          //System.out.println("Successfully notified peer");
         }
       }
       // TODO: Distribute my content to peers

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-java -cp src/ com.ece358.RemovePeer "$@" &
+java -cp src/ com.ece358.RemovePeer "$@"

@@ -13,6 +13,8 @@ public class AddContent {
       AddContentResponse response = (AddContentResponse) Utils.sendAndGetResponse(ipAddress, port, request);
       if (!response.success) {
         System.err.println("Error: no such peer");
+      } else {
+        System.out.println(response.key);
       }
     } catch (IOException e) {
       System.err.println("Error: no such peer");

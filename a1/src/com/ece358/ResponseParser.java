@@ -137,7 +137,7 @@ public class ResponseParser {
     }
     contentLength -= splitRequest.length - 4; // To account for newlines
 
-    System.out.println(s);
+    //System.out.println(s);
 
     if (contentLength == requestLength) {
       List<Integer> keys = new LinkedList<>();
@@ -168,7 +168,7 @@ public class ResponseParser {
     Integer contentLength = Integer.valueOf(matcher.group(1));
     int requestLength = splitRequest[3].length();
 
-    System.out.println(s);
+    //System.out.println(s);
 
     if (contentLength == requestLength) {
       return new AddContentResponse(true, Integer.valueOf(splitRequest[3]));

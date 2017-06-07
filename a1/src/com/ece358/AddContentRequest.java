@@ -21,12 +21,15 @@ public class AddContentRequest extends Request {
   @Override
   byte[] toBytes() {
     String request = String.format("%s:%s:%s", address, port, content);
+    StringBuilder requestBuilder = new StringBuilder()
+        .append((propagate ? "PROPAGATE\n" : "NOPROPAGATE\n"))
+        .append(request);
+
     return new StringBuilder()
         .append("ADDCONTENT\n")
-        .append((propagate ? "PROPAGATE\n" : "NOPROPAGATE\n"))
         .append("Content-Length: " + request.length() + "\n")
         .append("\n")
-        .append(request)
+        .append(requestBuilder.toString())
         .toString().getBytes(StandardCharsets.US_ASCII);
   }
 }

@@ -84,7 +84,7 @@ public class RequestParser {
       return null;
     }
 
-    boolean propagate = splitContent[3].equals("NOPROPAGATE");
+    boolean propagate = !splitContent[3].equals("NOPROPAGATE");
 
     return new AddContentRequest(
         splitContent[0],

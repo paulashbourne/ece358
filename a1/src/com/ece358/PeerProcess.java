@@ -188,6 +188,8 @@ public class PeerProcess {
       // If no more peers, then the content dies
       if (peers.size() > 0 && false) { // TODO: Fix this code (findPeerWithSpace returns null)
         int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
+        System.out.println("Max content");
+        System.out.println(maxContent);
         HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
         for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {
           Integer key = entry.getKey();
@@ -235,7 +237,7 @@ public class PeerProcess {
 
     // Check if I have space for more content
     int maxContent = getMaxContentPerPeer(
-        peerContentMappings.size(),
+        peerContentMappings.size() + 1, // We're add new content, so +1
         peers.size() + 1 // peers.size() does not include me
     );
     HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
@@ -255,8 +257,9 @@ public class PeerProcess {
     }
 
     peers.forEach(peer -> updateContentMapping(peer, globalContentCounter, true));
+    // Increment global content counter
     globalContentCounter++;
-    peers.forEach(this::notifyCounterChange);
+    peers.forEach(peer -> notifyCounterChange(peer));
 
     return response;
   }
@@ -360,13 +363,12 @@ public class PeerProcess {
     try {
       Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
     } catch (IOException e) {
-      System.err.println("Error: no such peer");
     }
   }
 
   private void updateContentMapping(Peer peer, Integer key, boolean add) {
     UpdateContentMappingRequest request =
-        new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), key, add);
+      new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), key, add);
     try {
       Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
     } catch (IOException e) {

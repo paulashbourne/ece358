@@ -50,10 +50,9 @@ public class PeerProcess {
   /*
    * Finds a peer who has space to host more data
    */
-  private Peer findPeerWithSpace(int maxContent) {
-    HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
+  private Peer findPeerWithSpace(int maxContent, HashMap<Peer, Integer> contentCountByPeer) {
     for (Peer peer : peers) {
-      if (countByPeer.get(peer) < maxContent) {
+      if (contentCountByPeer.get(peer) < maxContent) {
         return peer;
       }
     }
@@ -63,10 +62,9 @@ public class PeerProcess {
   /*
    * Finds a peer who has space to host more data
    */
-  private Peer findExtraContent(int minContent) {
-    HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
+  private Peer findExtraContent(int minContent, HashMap<Peer, Integer> contentCountByPeer) {
     for (Peer peer : peers) {
-      if (countByPeer.get(peer) > minContent) {
+      if (contentCountByPeer.get(peer) > minContent) {
         return peer;
       }
     }
@@ -188,11 +186,12 @@ public class PeerProcess {
 
       // Distribute my content to peers
       int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
+      HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
       for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {
         Integer key = entry.getKey();
         String content = entry.getValue();
         // Find a peer to send this data to
-        Peer dest = findPeerWithSpace(maxContent);
+        Peer dest = findPeerWithSpace(maxContent, contentCountByPeer);
         // Update local mapping
         peerContentMappings.put(key, dest);
         // Forward the data - tell the peer to propagate the mapping change to the rest of
@@ -236,11 +235,11 @@ public class PeerProcess {
         peerContentMappings.size(),
         peers.size() + 1 // peers.size() does not include me
     );
-    HashMap<Peer, Integer> countByPeer = getContentCountByPeer();
-    if (countByPeer.get(me) >= maxContent) {
+    HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
+    if (contentCountByPeer.get(me) >= maxContent) {
       // Forward the data to a peer
       // Find an eligible peer
-      Peer dest = findPeerWithSpace(maxContent);
+      Peer dest = findPeerWithSpace(maxContent, contentCountByPeer);
       // Update mapping
       peerContentMappings.put(globalContentCounter, dest);
       // Forward the request - tell the peer to accept it without propogating changes

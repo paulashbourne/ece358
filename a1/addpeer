@@ -3,5 +3,3 @@
 java -cp src/ com.ece358.AddPeer "$@" &
 
 sleep 2
-
-

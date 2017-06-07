@@ -366,7 +366,7 @@ public class PeerProcess {
   }
 
   private Response handleAllKeysRequest(AllKeysRequest request) {
-    return new AllKeysResponse(true, peerContentMappings.keySet());
+    return new AllKeysResponse(true, localContentMappings.keySet());
   }
 
   public Response handleRequest(Request untypedRequest) throws IOException {

@@ -20,6 +20,8 @@ public class UpdateContentMappingResponse extends Response {
       sb.append("\nSUCCESS");
     }
 
+    sb.append("Content-length: 0\n");
+
     return sb.toString().getBytes(StandardCharsets.US_ASCII);
   }
 }

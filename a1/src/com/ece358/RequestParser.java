@@ -24,9 +24,20 @@ public class RequestParser {
       return lookupContentRequestFromString(s);
     } else if (s.startsWith("REMOVECONTENT")) {
       return removeContentRequestFromString(s);
+    } else if (s.startsWith("REMOVEPEER")) {
+      return removePeerRequestFromString(s);
     }
 
     return null;
+  }
+
+  private static Request removePeerRequestFromString(String s) {
+    String[] splitContent = verifyRequest(s);
+    if (splitContent == null || splitContent.length < 2) {
+      return null;
+    }
+
+    return new RemovePeerRequest(splitContent[0], Integer.valueOf(splitContent[1]));
   }
 
   private static LookupContentRequest lookupContentRequestFromString(String s) {

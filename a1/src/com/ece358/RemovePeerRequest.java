@@ -6,8 +6,8 @@ import java.nio.charset.StandardCharsets;
  * Created by paul on 2017-06-04.
  */
 public class RemovePeerRequest extends Request {
-  public final String address;
-  public final Integer port;
+  public String address;
+  public Integer port;
 
   public RemovePeerRequest(String address, Integer port) {
     this.address = address;

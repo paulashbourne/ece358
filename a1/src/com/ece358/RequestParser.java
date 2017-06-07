@@ -121,10 +121,12 @@ public class RequestParser {
 
   public static RemoveContentRequest removeContentRequestFromString(String s) {
     String[] splitContent = verifyRequest(s);
-    if (splitContent == null || splitContent.length < 1) {
+    if (splitContent == null || splitContent.length < 4) {
       return null;
     }
 
-    return new RemoveContentRequest(Integer.valueOf(splitContent[0]));
+    boolean propagate = !splitContent[3].equals("NOPROPAGATE");
+
+    return new RemoveContentRequest(Integer.valueOf(splitContent[0]), propagate);
   }
 }

@@ -200,12 +200,28 @@ public class ResponseParser {
   }
 
   static RemoveContentResponse removeContentResponseFromString(String s) {
-    if (s.startsWith("REMOVECONTENT\nSUCCESS")) {
-      return new RemoveContentResponse(true);
-    } else if (s.startsWith("REMOVECONTENT\nFAILURE")) {
-      return new RemoveContentResponse(false);
+    if (s.startsWith("REMOVECONTENT\nFAILURE")) {
+      return new RemoveContentResponse(false, "");
     }
 
-    return null;
+    String[] splitRequest = s.split("\n");
+    if (splitRequest.length < 5) {
+      return null;
+    }
+
+    Matcher matcher = contentLengthPattern.matcher(splitRequest[2]);
+    if (!matcher.matches()) {
+      return null;
+    }
+    int fourthNewline = nthIndexOf(s, "\n", 4);
+    Integer contentLength = Integer.valueOf(matcher.group(1));
+
+    int requestLength = s.length() - 1 - fourthNewline;
+
+    if (contentLength == requestLength) {
+      return new RemoveContentResponse(true, s.substring(fourthNewline + 1));
+    } else {
+      return null;
+    }
   }
 }

@@ -62,13 +62,43 @@ public class PeerProcess {
   /*
    * Finds a peer who has space to host more data
    */
-  private Peer findExtraContent(int minContent, HashMap<Peer, Integer> contentCountByPeer) {
+  private Peer findPeerWithExtraContent(int minContent, HashMap<Peer, Integer> contentCountByPeer) {
     for (Peer peer : peers) {
       if (contentCountByPeer.get(peer) > minContent) {
         return peer;
       }
     }
     return null;
+  }
+
+  /*
+   *  Steals content from another peer until I meet the minimum
+   */
+  private void stealContent() throws IOException {
+    int minContent = getMinContentPerPeer(peerContentMappings.size(), peers.size() + 1);
+    HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
+    while (contentCountByPeer.get(me) < minContent) {
+      Peer victim = findPeerWithExtraContent(minContent, contentCountByPeer);
+      // Pick a key from this peer
+      Integer key = null;
+      for (Map.Entry<Integer, Peer> entry : peerContentMappings.entrySet()) {
+        Peer peer = entry.getValue();
+        if (peer == victim) {
+          key = entry.getKey();
+          break;
+        }
+      }
+      // Grab the data from the victim (no propagation)
+      RemoveContentRequest request = new RemoveContentRequest(key, false);
+      RemoveContentResponse response = (RemoveContentResponse) forwardRequest(victim, request);
+      // Store the data locally
+      localContentMappings.put(key, response.content);
+      peerContentMappings.put(key, me);
+      // Notify network of new mapping
+      notifyContentMappingChange(me, key, true);
+      // Refresh content counts
+      contentCountByPeer = getContentCountByPeer();
+    }
   }
 
   /*
@@ -141,6 +171,9 @@ public class PeerProcess {
         }
 
         peers.add(destPeer);
+
+        // Balance content
+        stealContent();
       } catch (IOException e) {
         System.err.println(e);
         System.exit(1);
@@ -252,24 +285,23 @@ public class PeerProcess {
       // Forward the data to a peer
       // Find an eligible peer
       Peer dest = findPeerWithSpace(maxContent, contentCountByPeer);
-      // Update mapping
-      peerContentMappings.put(globalContentCounter, dest);
       // Forward the request - tell the peer to accept it without propogating changes
       // to the mappings (I'll take care of it)
       AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), request.content, false);
       forwardRequest(dest, forward);
+      // Update mapping
+      peerContentMappings.put(globalContentCounter, dest);
+      notifyContentMappingChange(dest, globalContentCounter, true);
     } else {
       localContentMappings.put(globalContentCounter, content);
       peerContentMappings.put(globalContentCounter, me);
+      notifyContentMappingChange(me, globalContentCounter, true);
     }
 
     // Increment global content counter
-    // Update content mappings and global counter for each peer
+    // Global counter for each peer
     globalContentCounter++;
-    for (Peer peer : peers) {
-      updateContentMapping(peer, globalContentCounter, true);
-      notifyCounterChange(peer);
-    }
+    notifyCounterChange();
 
     return response;
   }
@@ -309,21 +341,23 @@ public class PeerProcess {
   }
 
   private Response handleRemoveContentRequest(RemoveContentRequest request) throws IOException {
-    if (localContentMappings.containsKey(request.key)) {
-      localContentMappings.remove(request.key);
-      peerContentMappings.remove(request.key);
-      for (Peer peer : peers) {
-        updateContentMapping(peer, request.key, false);
+    int key = request.key;
+    if (localContentMappings.containsKey(key)) {
+      String content = localContentMappings.get(key);
+      localContentMappings.remove(key);
+      peerContentMappings.remove(key);
+      if (request.propagate) {
+        notifyContentMappingChange(me, key, false);
+        // Steal content from another peer if I'm below the minimum
+        stealContent();
       }
 
-      // TODO: If below minimum, grab content from another peer
-
-      return new RemoveContentResponse(true);
-    } else if (peerContentMappings.containsKey(request.key)) {
+      return new RemoveContentResponse(true, content);
+    } else if (peerContentMappings.containsKey(key)) {
       // Forward the request to the appropriate peer
-      return forwardRequest(peerContentMappings.get(request.key), request);
+      return forwardRequest(peerContentMappings.get(key), request);
     } else {
-      return new RemoveContentResponse(false);
+      return new RemoveContentResponse(false, "");
     }
   }
 
@@ -371,14 +405,20 @@ public class PeerProcess {
     }
   }
 
-  private void notifyCounterChange(Peer peer) throws IOException {
-    UpdateCounterRequest request = new UpdateCounterRequest(peer.getAddress(), peer.getPort(), globalContentCounter);
-    forwardRequest(peer, request);
+  private void notifyCounterChange() throws IOException {
+    // TODO: Source peer not needed here
+    UpdateCounterRequest request = new UpdateCounterRequest(me.getAddress(), me.getPort(), globalContentCounter);
+    for (Peer peer : peers) {
+      forwardRequest(peer, request);
+    }
   }
 
-  private void updateContentMapping(Peer peer, Integer key, boolean add) throws IOException {
+  private void notifyContentMappingChange(Peer owner, Integer key, boolean add) throws IOException {
     UpdateContentMappingRequest request =
-      new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), key, add);
-    forwardRequest(peer, request);
+      new UpdateContentMappingRequest(owner.getAddress(), owner.getPort(), key, add);
+    // Forward to each peer
+    for (Peer peer : peers) {
+      forwardRequest(peer, request);
+    }
   }
 }

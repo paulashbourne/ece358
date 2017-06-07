@@ -7,9 +7,11 @@ import java.nio.charset.StandardCharsets;
  */
 public class RemoveContentResponse extends Response {
   public final boolean success;
+  public final String content;
 
-  public RemoveContentResponse(boolean success) {
+  public RemoveContentResponse(boolean success, String content) {
     this.success = success;
+    this.content = content;
   }
 
   @Override public byte[] toBytes() {
@@ -20,7 +22,7 @@ public class RemoveContentResponse extends Response {
       sb.append("\nSUCCESS");
     }
 
-    sb.append("Content-length: 0\n");
+    sb.append(String.format("\nContent-Length: %s\n\n%s", content.length(), content));
 
     return sb.toString().getBytes(StandardCharsets.US_ASCII);
   }

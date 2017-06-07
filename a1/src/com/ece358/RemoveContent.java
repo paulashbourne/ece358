@@ -8,7 +8,7 @@ public class RemoveContent {
     int port = Integer.valueOf(args[1]);
     String key = args[2];
 
-    RemoveContentRequest request = new RemoveContentRequest(Integer.valueOf(key));
+    RemoveContentRequest request = new RemoveContentRequest(Integer.valueOf(key), true);
     try {
       RemoveContentResponse response =
           (RemoveContentResponse) Utils.sendAndGetResponse(address, port, request);

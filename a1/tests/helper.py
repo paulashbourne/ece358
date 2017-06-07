@@ -85,8 +85,6 @@ def execute_command(cmd):
     stdout_file = 'stdout.{}.txt'.format(random.randint(1,10000))
     stderr_file = 'stderr.{}.txt'.format(random.randint(1,10000))
 
-    print cmd
-
     #returncode = os.system('{} 1> {} 2> {}'.format(cmd, stdout_file, stderr_file))
     returncode = os.system('gtimeout {} {} 1> {} 2> {}'.format(timeout_seconds, cmd, stdout_file, stderr_file))
 

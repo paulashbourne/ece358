@@ -71,6 +71,13 @@ public class PeerProcess {
     return null;
   }
 
+  /*
+   *  Forwards a request to another peer in the network
+   */
+  private Response forwardRequest(Peer dest, Request request) throws IOException {
+    return Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), request);
+  }
+
   public void start(String[] args) throws SocketException {
     ServerSocket serverSocket;
     // TODO(jgulbronson) - add limit to retries
@@ -108,8 +115,8 @@ public class PeerProcess {
     if (args.length == 3) {
       try {
         Request request = new AddPeerRequest(address, port);
-        AddPeerResponse response =
-            (AddPeerResponse) Utils.sendAndGetResponse(args[0], Integer.valueOf(args[1]), request);
+        Peer destPeer = new Peer(args[0], Integer.valueOf(args[1]));
+        AddPeerResponse response = (AddPeerResponse) forwardRequest(destPeer, request);
         globalContentCounter = response.counter;
         peerContentMappings = (HashMap<Integer, Peer>) response.peerContentMapping;
         //System.out.println(
@@ -133,7 +140,7 @@ public class PeerProcess {
           }
         }
 
-        peers.add(new Peer(args[0], Integer.valueOf(args[1])));
+        peers.add(destPeer);
       } catch (IOException e) {
         System.err.println(e);
         System.exit(1);
@@ -202,7 +209,7 @@ public class PeerProcess {
           // the network. Won't cause deadlock because I have already removed myself from
           // their mapping
           AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), content, true);
-          Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), forward);
+          forwardRequest(dest, forward);
         }
       }
 
@@ -250,7 +257,7 @@ public class PeerProcess {
       // Forward the request - tell the peer to accept it without propogating changes
       // to the mappings (I'll take care of it)
       AddContentRequest forward = new AddContentRequest(dest.getAddress(), dest.getPort(), request.content, false);
-      Utils.sendAndGetResponse(dest.getAddress(), dest.getPort(), forward);
+      forwardRequest(dest, forward);
     } else {
       localContentMappings.put(globalContentCounter, content);
       peerContentMappings.put(globalContentCounter, me);
@@ -289,9 +296,7 @@ public class PeerProcess {
       return new LookupContentResponse(false, "");
     } else {
       Peer peer = peerContentMappings.get(key);
-      LookupContentResponse response =
-          (LookupContentResponse) Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(),
-              request);
+      LookupContentResponse response = (LookupContentResponse) forwardRequest(peer, request);
       if (response.success) {
         return new LookupContentResponse(true, response.content);
       }
@@ -306,9 +311,13 @@ public class PeerProcess {
       peerContentMappings.remove(request.key);
       peers.forEach(peer -> updateContentMapping(peer, request.key, false));
 
-      // TODO: If beloe minimum, grab content frm another peer
+      // TODO: If below minimum, grab content from another peer
 
       return new RemoveContentResponse(true);
+    } else if (peerContentMappings.containsKey(request.key)) {
+      // Forward the request to the appropriate peer
+      // HERE
+      return new RemoveContentResponse(false);
     } else {
       return new RemoveContentResponse(false);
     }
@@ -361,7 +370,7 @@ public class PeerProcess {
   private void notifyCounterChange(Peer peer) {
     UpdateCounterRequest request = new UpdateCounterRequest(peer.getAddress(), peer.getPort(), globalContentCounter);
     try {
-      Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
+      forwardRequest(peer, request);
     } catch (IOException e) {
     }
   }
@@ -370,7 +379,7 @@ public class PeerProcess {
     UpdateContentMappingRequest request =
       new UpdateContentMappingRequest(peer.getAddress(), peer.getPort(), key, add);
     try {
-      Utils.sendAndGetResponse(peer.getAddress(), peer.getPort(), request);
+      forwardRequest(peer, request);
     } catch (IOException e) {
       System.err.println("Error: no such peer");
     }

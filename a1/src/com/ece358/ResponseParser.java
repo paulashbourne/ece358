@@ -25,6 +25,8 @@ public class ResponseParser {
       return lookupContentResponseFromString(s);
     } else if (s.startsWith("REMOVECONTENT")) {
       return removeContentResponseFromString(s);
+    } else if (s.startsWith("REMOVEPEER")) {
+      return new RemovePeerResponse(true);
     }
 
     return null;

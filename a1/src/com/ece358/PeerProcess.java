@@ -78,6 +78,7 @@ public class PeerProcess {
       }
     }
     port = serverSocket.getLocalPort();
+    me = new Peer(address, port);
     System.out.println(String.format("%s %d", address, port));
 
     if (args.length == 3) {

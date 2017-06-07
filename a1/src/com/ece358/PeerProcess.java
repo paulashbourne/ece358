@@ -186,7 +186,7 @@ public class PeerProcess {
 
       // Distribute my content to peers
       // If no more peers, then the content dies
-      if (peers.size() > 0) {
+      if (peers.size() > 0 && false) { // TODO: Fix this code (findPeerWithSpace returns null)
         int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
         HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
         for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {

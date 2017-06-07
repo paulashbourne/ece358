@@ -228,8 +228,6 @@ public class PeerProcess {
       // If no more peers, then the content dies
       if (peers.size() > 0) {
         int maxContent = getMaxContentPerPeer(peerContentMappings.size(), peers.size());
-        System.out.println("Max content");
-        System.out.println(maxContent);
         HashMap<Peer, Integer> contentCountByPeer = getContentCountByPeer();
         for (Map.Entry<Integer, String> entry : localContentMappings.entrySet()) {
           Integer key = entry.getKey();

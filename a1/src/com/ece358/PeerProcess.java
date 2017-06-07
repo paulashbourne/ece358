@@ -355,7 +355,13 @@ public class PeerProcess {
       return new RemoveContentResponse(true, content);
     } else if (peerContentMappings.containsKey(key)) {
       // Forward the request to the appropriate peer
-      return forwardRequest(peerContentMappings.get(key), request);
+      Peer peer = peerContentMappings.get(key);
+      // Can't propogate due to deadlock - this process has to update mappings
+      RemoveContentRequest forward = new RemoveContentRequest(key, false);
+      RemoveContentResponse response = (RemoveContentResponse) forwardRequest(peer, forward);
+      peerContentMappings.remove(key);
+      notifyContentMappingChange(peer, key, false);
+      return response;
     } else {
       return new RemoveContentResponse(false, "");
     }

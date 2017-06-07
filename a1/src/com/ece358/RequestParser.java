@@ -40,7 +40,7 @@ public class RequestParser {
 
   public static String[] verifyRequest(String s) {
     String[] splitRequest = s.split("\n");
-    if (splitRequest.length != 4) {
+    if (splitRequest.length < 4) {
       return null;
     }
     Matcher matcher = contentLengthPattern.matcher(splitRequest[1]);
@@ -48,8 +48,11 @@ public class RequestParser {
       return null;
     }
     Integer contentLength = Integer.valueOf(matcher.group(1));
-    if (contentLength == splitRequest[3].length()) {
+    if (splitRequest.length == 4 && contentLength == splitRequest[3].length()) {
       return splitRequest[3].trim().split(":");
+    } else if (splitRequest.length == 5 && contentLength == splitRequest[4].length()) {
+      String[] split = splitRequest[4].trim().split(":");
+      return new String[] {split[0], split[1], split[2], splitRequest[3]};
     } else {
       return null;
     }
@@ -66,11 +69,11 @@ public class RequestParser {
 
   public static AddContentRequest addContentRequestFromString(String s) {
     String[] splitContent = verifyRequest(s);
-    if (splitContent == null || splitContent.length < 3) {
+    if (splitContent == null || splitContent.length < 4) {
       return null;
     }
 
-    boolean propagate = !s.contains("NOPROPAGATE");
+    boolean propagate = splitContent[3].equals("NOPROPAGATE");
 
     return new AddContentRequest(
         splitContent[0],

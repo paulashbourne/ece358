@@ -110,7 +110,8 @@ public class PeerProcess {
     socket.close();
     if (request instanceof RemovePeerRequest) {
       RemovePeerRequest removeRequest = (RemovePeerRequest) request;
-      if (removeRequest.address == me.getAddress() && removeRequest.port == me.getPort()) {
+      if (removeRequest.address.equals(me.getAddress()) && removeRequest.port.equals(
+          me.getPort())) {
         // I am the peer being removed - kill this process
         System.exit(0);
       }
@@ -128,7 +129,7 @@ public class PeerProcess {
   }
 
   private Response handleRemovePeerRequest(RemovePeerRequest request) throws IOException {
-    if (request.address == me.getAddress() && request.port == me.getPort()) {
+    if (request.address.equals(me.getAddress()) && request.port.equals(me.getPort())) {
       // I am the peer being removed
       // Notify each of my peers that I am no longer in the network
       for (Peer peer : peers) {
@@ -146,7 +147,7 @@ public class PeerProcess {
       Iterator<Peer> iterator = peers.iterator();
       while (iterator.hasNext()) {
         Peer peer = iterator.next();
-        if (request.address == peer.getAddress() && request.port == peer.getPort()) {
+        if (request.address.equals(peer.getAddress()) && request.port.equals(me.getPort())) {
           iterator.remove();
           break;
         }

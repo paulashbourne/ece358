@@ -1,9 +1,7 @@
 package com.ece358;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -22,7 +20,7 @@ public class SingleClientServer implements Runnable {
   private String filePath;
   DatagramSocket datagramSocket;
   private Integer sequenceNumber;
-  private BufferedReader reader;
+  private FileInputStream fileInputStream;
 
   public SingleClientServer(String clientIpAddress, int clientPort, String filePath)
       throws SocketException {
@@ -90,19 +88,28 @@ public class SingleClientServer implements Runnable {
                 "localhost", myPort);
             Packet responsePacket;
             try {
+              // TODO(jgulbronson) - Do we do this all in one packet?
               String fullFilePath = filePath + "/" + fileName;
-              reader = new BufferedReader(new FileReader(fullFilePath));
-              long fileLength = new File(fullFilePath).length();
+              File file = new File(fullFilePath);
+              fileInputStream = new FileInputStream(file);
+              long fileLength = file.length();
+              ByteBuffer fileDataBuffer = ByteBuffer.allocate((int) fileLength + 4);
+              fileDataBuffer.put(longToBytes(fileLength));
+              byte[] buffer = new byte[255];
+              int numRead;
+              while ((numRead = fileInputStream.read(buffer)) >= 0) {
+                fileDataBuffer.put(buffer, 0, numRead);
+              }
               responsePacket = new Packet.Builder()
                   .sourcePort(myPort)
                   .destinationPort(clientPort)
                   .ackNumber(ackNumber)
-                  .sequenceNumber(sequenceNumber + 4)
-                  .segmentSize(24) // 20 for the header, 4 for 32-bit word
-                  .payload(longToBytes(fileLength))
+                  .sequenceNumber(sequenceNumber + 4 + (int) fileLength)
+                  .segmentSize(24 + (int) fileLength)
+                  .payload(fileDataBuffer.array())
                   .build();
-              sequenceNumber += 4;
-            } catch (FileNotFoundException e) {
+              sequenceNumber += 4 + (int) fileLength;
+            } catch (IOException e) {
               // TODO(jgulbronson) - initiate connection close
               continue;
             }

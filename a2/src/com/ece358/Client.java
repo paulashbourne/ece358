@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class Client {
   private Integer clientPort;
@@ -64,15 +65,9 @@ public class Client {
       throw new RuntimeException("Expected ack number to be 2");
     }
 
-
-    packet = new Packet.Builder()
-        .destinationPort(serverPort)
-        .sourcePort(socket.getLocalPort())
-        .sequenceNumber(sequenceNumber)
-        .build();
-    sequenceNumber += 1;
-    sendPacket = Utils.packetToDatagramPacket(packet, "localhost", serverPort);
-    socket.send(sendPacket);
+    byte[] fileData = Arrays.copyOfRange(packet.payload, 4, packet.payload.length);
+    System.out.println("Received");
+    System.out.println(new String(fileData));
 
     packet = new Packet.Builder()
         .FIN(true)

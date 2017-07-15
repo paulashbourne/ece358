@@ -2,6 +2,8 @@ package com.ece358;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
@@ -51,6 +53,13 @@ public class Packet {
     } else {
       payload = Arrays.copyOfRange(packetData, 20, packetData.length);
     }
+  }
+
+  public static Packet fromDatagram(DatagramPacket datagramPacket) {
+    ByteBuffer byteBuffer = ByteBuffer.wrap(datagramPacket.getData());
+    byte[] data = new byte[datagramPacket.getLength()];
+    byteBuffer.get(data, datagramPacket.getOffset(), datagramPacket.getLength());
+    return new Packet(data);
   }
 
   private int bytesToInt(byte... data) {
@@ -163,7 +172,9 @@ public class Packet {
     byteStream.write(checksum >> 8);
     byteStream.write(checksum & 0xFF);
 
-    byteStream.write(payload);
+    if (payload != null) {
+      byteStream.write(payload);
+    }
 
     return byteStream.toByteArray();
   }

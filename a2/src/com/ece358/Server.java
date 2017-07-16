@@ -36,7 +36,7 @@ public class Server {
     while (true) {
       socket.receive(datagramPacket);
       byte[] packetData = datagramPacket.getData();
-      Packet packet = new Packet(packetData);
+      Packet packet = new Packet(packetData, false);
       if (packet.hasErrors()) {
         continue;
       }

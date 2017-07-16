@@ -38,7 +38,7 @@ public class Packet {
   public final int checksum;
   public final byte[] payload;
 
-  public Packet(byte[] packetData) {
+  public Packet(byte[] packetData, boolean calculateChecksum) throws IOException {
     sourcePort = bytesToInt(packetData[0], packetData[1]);
     destinationPort = bytesToInt(packetData[2], packetData[3]);
     segmentSize = bytesToInt(packetData[4], packetData[5], packetData[6], packetData[7]);
@@ -47,19 +47,24 @@ public class Packet {
     SYN = (packetData[16] & 0b10000000) > 0;
     ACK = (packetData[16] & 0b01000000) > 0;
     FIN = (packetData[16] & 0b00100000) > 0;
-    checksum = bytesToInt(packetData[18], packetData[19]);
     if (packetData.length == 20) {
       payload = new byte[0];
     } else {
       payload = Arrays.copyOfRange(packetData, 20, packetData.length);
     }
+    if (calculateChecksum) {
+      checksum = calculateChecksum(toBytes());
+    } else {
+      checksum = bytesToInt(packetData[18], packetData[19]);
+    }
   }
 
-  public static Packet fromDatagram(DatagramPacket datagramPacket) {
+
+  public static Packet fromDatagram(DatagramPacket datagramPacket) throws IOException {
     ByteBuffer byteBuffer = ByteBuffer.wrap(datagramPacket.getData());
     byte[] data = new byte[datagramPacket.getLength()];
     byteBuffer.get(data, datagramPacket.getOffset(), datagramPacket.getLength());
-    return new Packet(data);
+    return new Packet(data, false);
   }
 
   private int bytesToInt(byte... data) {
@@ -93,10 +98,7 @@ public class Packet {
 
   private int calculateChecksum(byte[] bytes) {
     int checksum = 0;
-    for (int i = 0; i < bytes.length; i += 2) {
-      if (i == 18) {
-        continue;
-      }
+    for (int i = 0; i < bytes.length - bytes.length % 2; i += 2) {
       checksum += bytesToInt(bytes[i], bytes[i + 1]);
     }
 
@@ -118,7 +120,7 @@ public class Packet {
     }
 
     int checksum = 0;
-    for (int i = 0; i < bytes.length; i += 2) {
+    for (int i = 0; i < bytes.length - bytes.length % 2; i += 2) {
       checksum += bytesToInt(bytes[i], bytes[i + 1]);
     }
 

@@ -16,7 +16,7 @@ public class PacketTest {
   boolean SYN = true;
   boolean ACK = false;
   boolean FIN = true;
-  byte[] payload = new byte[] { 0x4, 0x1, 0x9, 0x78 };
+  byte[] payload = new byte[] {0x4, 0x1, 0x9, 0x78};
 
   @Test public void canConvertWithEmptyPayload() throws Exception {
     Packet packet = new Packet.Builder()
@@ -31,7 +31,7 @@ public class PacketTest {
         .payload(new byte[] {})
         .build();
 
-    assertEquals(packet, new Packet(packet.toBytes()));
+    assertEquals(packet, new Packet(packet.toBytes(), false));
   }
 
   @Test public void canConvertWithNonEmptyPayload() throws Exception {
@@ -47,7 +47,7 @@ public class PacketTest {
         .payload(payload)
         .build();
 
-    assertEquals(packet, new Packet(packet.toBytes()));
+    assertEquals(packet, new Packet(packet.toBytes(), false));
   }
 
   @Test public void unalteredPacketHasCorrectChecksum() throws Exception {
@@ -80,6 +80,22 @@ public class PacketTest {
         .build();
 
     byte[] alteredBytes = ByteBuffer.wrap(packet.toBytes()).put((byte) 0xAB).array();
-    assertTrue(new Packet(alteredBytes).hasErrors());
+    assertTrue(new Packet(alteredBytes, false).hasErrors());
+  }
+
+  @Test public void worksWithTheChecksumExample() throws Exception {
+    byte[] data = new byte[] {
+        0b00001100, 0b00001000, 0b00010000, 0b00001000,
+        0b00000000, 0b00000000, 0b00000000, 0b00010111,
+        0b00000000, 0b00000000, 0b00000000, 0b00000011,
+        0b00000000, 0b00000000, 0b00000000, 0b00000011,
+        0b01000000, 0b00000000, 0b00000000, 0b00000000,
+        0b01010101, 0b01010101, (byte) 0b11111111
+    };
+
+    Packet packet = new Packet(data, true);
+    assertEquals(packet.checksum, 0b0100111101111100);
+
+    assertFalse(packet.hasErrors());
   }
 }

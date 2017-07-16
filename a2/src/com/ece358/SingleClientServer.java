@@ -9,18 +9,23 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class SingleClientServer implements Runnable {
-  private Integer ackNumber;
-  private Integer myPort;
-  private ServerState state = ServerState.CLOSED;
-  private BlockingQueue<Packet> packets;
-  private String clientIpAddress;
-  private int clientPort;
-  private String filePath;
+  Integer ackNumber;
+  Integer myPort;
+  ServerState state = ServerState.CLOSED;
+  BlockingQueue<Packet> packets;
+  String clientIpAddress;
+  int clientPort;
+  String filePath;
   DatagramSocket datagramSocket;
-  private Integer sequenceNumber;
-  private FileInputStream fileInputStream;
+  Integer sequenceNumber;
+  FileInputStream fileInputStream;
+  Logger logger;
+  Packet lastSentPacket;
 
   public SingleClientServer(String clientIpAddress, int clientPort, String filePath)
       throws SocketException {
@@ -32,6 +37,8 @@ public class SingleClientServer implements Runnable {
     this.sequenceNumber = 0;
     this.myPort = null;
     this.ackNumber = 0;
+    this.logger = Logger.getLogger(
+        SingleClientServer.class.getName() + "-" + this.clientIpAddress + ":" + this.clientPort);
   }
 
   synchronized boolean addPacket(Packet packet) {
@@ -46,10 +53,17 @@ public class SingleClientServer implements Runnable {
     while (true) {
       Packet packet;
       try {
-        packet = packets.take();
+        packet = packets.poll(100, TimeUnit.MILLISECONDS);
+        // TODO - Make sure our re-send logic is sound
+        if (packet == null) {
+          sendPacket(lastSentPacket);
+          continue;
+        }
         if (packet.FIN) {
           return;
         }
+        // TODO - check if it's an old packet. If so, discard and take another.
+        // TODO - Updating the ack number should go at the bottom of the loop.
         if (packet.sequenceNumber + 1 > ackNumber) {
           ackNumber = packet.sequenceNumber + 1;
         }
@@ -61,27 +75,20 @@ public class SingleClientServer implements Runnable {
         case CLOSED:
           if (packet.SYN) {
             this.myPort = packet.destinationPort;
-            Packet responsePacket = new Packet.Builder()
+            Packet responsePacket = defaultPacketBuilder()
                 .SYN(true)
                 .ACK(true)
-                .sourcePort(myPort)
-                .destinationPort(clientPort)
                 .sequenceNumber(sequenceNumber)
                 .ackNumber(ackNumber)
                 .build();
             sequenceNumber += 1;
-            try {
-              DatagramPacket responseDatagramPacket = Utils.packetToDatagramPacket(responsePacket,
-                  clientIpAddress, clientPort);
-              datagramSocket.send(responseDatagramPacket);
+            if (sendPacket(responsePacket)) {
               state = ServerState.SYN_RECD;
-            } catch (java.io.IOException ignored) {
             }
           }
           break;
         case SYN_RECD:
           if (packet.ACK) {
-            state = ServerState.ESTAB;
             String fileName = String.format("%s.%s.%s.%s",
                 clientIpAddress, clientPort,
                 // TODO(jgulbronson) - Get actual address
@@ -100,9 +107,7 @@ public class SingleClientServer implements Runnable {
               while ((numRead = fileInputStream.read(buffer)) >= 0) {
                 fileDataBuffer.put(buffer, 0, numRead);
               }
-              responsePacket = new Packet.Builder()
-                  .sourcePort(myPort)
-                  .destinationPort(clientPort)
+              responsePacket = defaultPacketBuilder()
                   .ackNumber(ackNumber)
                   .sequenceNumber(sequenceNumber + 4 + (int) fileLength)
                   .segmentSize(24 + (int) fileLength)
@@ -111,14 +116,11 @@ public class SingleClientServer implements Runnable {
               sequenceNumber += 4 + (int) fileLength;
             } catch (IOException e) {
               // TODO(jgulbronson) - initiate connection close
+              logger.log(Level.SEVERE, "Can't find file", e);
               continue;
             }
-            try {
-              DatagramPacket responseDatagramPacket = Utils.packetToDatagramPacket(responsePacket,
-                  clientIpAddress, clientPort);
-              datagramSocket.send(responseDatagramPacket);
-            } catch (IOException e) {
-              e.printStackTrace();
+            if (sendPacket(responsePacket)) {
+              state = ServerState.ESTAB;
             }
           }
           break;
@@ -126,6 +128,25 @@ public class SingleClientServer implements Runnable {
           System.out.println("Client wants more data!");
       }
     }
+  }
+
+  // Returns true if the packet is sent successfully, otherwise false
+  private boolean sendPacket(Packet packet) {
+    try {
+      DatagramPacket responseDatagramPacket =
+          Utils.packetToDatagramPacket(packet, clientIpAddress, clientPort);
+      datagramSocket.send(responseDatagramPacket);
+      lastSentPacket = packet;
+      return true;
+    } catch (java.io.IOException ignored) {
+      return false;
+    }
+  }
+
+  private Packet.Builder defaultPacketBuilder() {
+    return new Packet.Builder()
+        .sourcePort(myPort)
+        .destinationPort(clientPort);
   }
 
   public byte[] longToBytes(long fileSize) {

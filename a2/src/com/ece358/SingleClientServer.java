@@ -25,7 +25,7 @@ public class SingleClientServer implements Runnable {
   Integer sequenceNumber;
   FileInputStream fileInputStream;
   Logger logger;
-  Packet lastSentPacket;
+  Packet.Builder lastSentPacketBuilder;
 
   public SingleClientServer(String clientIpAddress, int clientPort, String filePath)
       throws SocketException {
@@ -54,9 +54,9 @@ public class SingleClientServer implements Runnable {
       Packet packet;
       try {
         packet = packets.poll(100, TimeUnit.MILLISECONDS);
-        // TODO - Make sure our re-send logic is sound
+        // If we don't
         if (packet == null) {
-          sendPacket(lastSentPacket);
+          sendPacket(lastSentPacketBuilder);
           continue;
         }
         if (packet.FIN) {
@@ -75,14 +75,11 @@ public class SingleClientServer implements Runnable {
         case CLOSED:
           if (packet.SYN) {
             this.myPort = packet.destinationPort;
-            Packet responsePacket = defaultPacketBuilder()
+            Packet.Builder responsePacketBuilder = defaultPacketBuilder()
                 .SYN(true)
                 .ACK(true)
-                .sequenceNumber(sequenceNumber)
-                .ackNumber(ackNumber)
-                .build();
-            sequenceNumber += 1;
-            if (sendPacket(responsePacket)) {
+                .ackNumber(ackNumber);
+            if (sendPacket(responsePacketBuilder)) {
               state = ServerState.SYN_RECD;
             }
           }
@@ -93,9 +90,9 @@ public class SingleClientServer implements Runnable {
                 clientIpAddress, clientPort,
                 // TODO(jgulbronson) - Get actual address
                 "localhost", myPort);
-            Packet responsePacket;
+            Packet.Builder responsePacketBuilder;
             try {
-              // TODO(jgulbronson) - Do we do this all in one packet?
+              // TODO(jgulbronson) - Split up in to multiple packets.
               String fullFilePath = filePath + "/" + fileName;
               File file = new File(fullFilePath);
               fileInputStream = new FileInputStream(file);
@@ -107,19 +104,16 @@ public class SingleClientServer implements Runnable {
               while ((numRead = fileInputStream.read(buffer)) >= 0) {
                 fileDataBuffer.put(buffer, 0, numRead);
               }
-              responsePacket = defaultPacketBuilder()
+              responsePacketBuilder = defaultPacketBuilder()
                   .ackNumber(ackNumber)
-                  .sequenceNumber(sequenceNumber + 4 + (int) fileLength)
-                  .segmentSize(24 + (int) fileLength)
-                  .payload(fileDataBuffer.array())
-                  .build();
+                  .payload(fileDataBuffer.array());
               sequenceNumber += 4 + (int) fileLength;
             } catch (IOException e) {
               // TODO(jgulbronson) - initiate connection close
               logger.log(Level.SEVERE, "Can't find file", e);
               continue;
             }
-            if (sendPacket(responsePacket)) {
+            if (sendPacket(responsePacketBuilder)) {
               state = ServerState.ESTAB;
             }
           }
@@ -131,12 +125,29 @@ public class SingleClientServer implements Runnable {
   }
 
   // Returns true if the packet is sent successfully, otherwise false
-  private boolean sendPacket(Packet packet) {
+  private boolean sendPacket(Packet.Builder packetBuilder) {
     try {
+      if (packetBuilder.payload == null) {
+        if (packetBuilder.FIN || packetBuilder.SYN) {
+          sequenceNumber += 1;
+        }
+      } else {
+        sequenceNumber += packetBuilder.payload.length;
+      }
+      int payloadLength;
+      if (packetBuilder.payload == null) {
+        payloadLength = 0;
+      } else {
+        payloadLength = packetBuilder.payload.length;
+      }
+      Packet packet = packetBuilder
+          .segmentSize(20 + payloadLength)
+          .sequenceNumber(sequenceNumber)
+          .build();
       DatagramPacket responseDatagramPacket =
           Utils.packetToDatagramPacket(packet, clientIpAddress, clientPort);
       datagramSocket.send(responseDatagramPacket);
-      lastSentPacket = packet;
+      lastSentPacketBuilder = packetBuilder;
       return true;
     } catch (java.io.IOException ignored) {
       return false;
